@@ -1,6 +1,6 @@
 ---
 name: smart-routing
-description: Intelligent LLM routing system — minimizes Claude API cost while maximizing reliability. ALWAYS triggers when: any coding task begins, user mentions usage/cost/tokens/Ollama/local models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across Claude (plan+verify) and Ollama (local execution) using confidence scoring, impact analysis, risk scoring, and adaptive learning.
+description: Intelligent LLM routing system — minimizes cost while maximizing reliability. ALWAYS triggers when: any coding task begins, user mentions usage/cost/tokens/routing/models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across model tiers using confidence scoring, impact analysis, risk scoring, and adaptive learning. Supports two modes — cloud-only (Opus/Sonnet/Haiku) and hybrid (Claude + Ollama local models).
 user-invocable: true
 ---
 
@@ -8,29 +8,49 @@ user-invocable: true
 
 ## User Configuration
 
-Set these values to match your local setup before using this skill.
+Choose your routing mode and configure it below.
+
+### Mode A — Cloud Only (no local models needed)
 
 ```
+ROUTING_MODE:  cloud
+TIER_1:        claude-haiku-4-5    # fast, cheap — trivial/mechanical tasks
+TIER_2:        claude-sonnet-4-5   # balanced — single/multi-file, debugging
+TIER_3:        claude-opus-4-6     # full power — architecture, refactors, research
+```
+
+### Mode B — Hybrid (Claude + Ollama)
+
+```
+ROUTING_MODE:    hybrid
 OLLAMA_SMALL:    <your small model, e.g. llama3.2, qwen2.5:7b>
 OLLAMA_MEDIUM:   <your medium model, e.g. qwen2.5:14b, mistral>
-OLLAMA_LARGE:    <your large model, e.g. qwen2.5:32b, llama3.1:70b, deepseek-coder-v2:16b>
+OLLAMA_LARGE:    <your large model, e.g. qwen2.5:32b, deepseek-coder-v2:16b>
 OLLAMA_ENDPOINT: http://localhost:11434
-CLOUD_MODEL:     claude-sonnet-4-5  (or your preferred Claude model)
+CLOUD_MODEL:     claude-sonnet-4-5  (fallback/escalation target)
 ```
 
-Replace references to `ollama:small`, `ollama:medium`, and `ollama:large` throughout this skill with the model IDs you configure above.
+Throughout this skill, `tier:1`, `tier:2`, `tier:3` refer to your configured models — either Haiku/Sonnet/Opus or Ollama small/medium/large.
 
 ---
 
 ## Role Architecture
 
+### Cloud Mode
+```
+Opus   = MASTERMIND  (architecture, complex reasoning, verification)
+Sonnet = WORKHORSE   (multi-file edits, debugging, feature work)
+Haiku  = GRUNT       (trivial, mechanical, boilerplate, renames)
+```
+
+### Hybrid Mode
 ```
 Claude  = PLANNER + ARCHITECT + VERIFIER  (never brute executor)
 Ollama  = LOCAL EXECUTOR  (deterministic, isolated, low-risk tasks)
 ```
 
-Claude always owns the plan. Ollama handles tasks requiring minimal reasoning.
-Never route a task requiring cross-file understanding to a local model without a Claude-written plan.
+In both modes: the highest-tier model owns the plan. Lower tiers execute.
+Never route a task requiring cross-file understanding to a lower tier without a higher-tier plan.
 
 ---
 
@@ -63,7 +83,7 @@ Assign ONE class and a confidence score 0.0–1.0:
 | No test coverage | -0.05 |
 | Deep dependency chains | -0.15 |
 
-**Confidence rule:** If `confidence < 0.65` → skip all local model tiers, route directly to `claude:plan`.
+**Confidence rule:** If `confidence < 0.65` → skip tier:1 and tier:2, route directly to `tier:3`.
 A low-confidence task given to a weak model will produce confidently wrong output.
 
 ---
@@ -138,11 +158,19 @@ Scan the task for risk signals. Sum the scores.
 
 Count lines across all files needed x 15 for token estimate. Add 500 overhead, 200 per file.
 
+### Cloud Mode Limits
 ```
-ollama:small   → safe <= 4K tokens
-ollama:medium  → safe <= 8K tokens
-ollama:large   → safe <= 16K tokens
-Claude         → safe <= 180K tokens
+Haiku  (tier:1)  → safe <= 32K tokens   (fast, 200K context window)
+Sonnet (tier:2)  → safe <= 180K tokens  (balanced)
+Opus   (tier:3)  → safe <= 680K tokens  (1M context window)
+```
+
+### Hybrid Mode Limits
+```
+ollama:small  (tier:1)  → safe <= 4K tokens
+ollama:medium (tier:2)  → safe <= 8K tokens
+ollama:large  (tier:3)  → safe <= 16K tokens
+Claude        (tier:3+) → safe <= 180K tokens
 ```
 
 Adjust these limits based on the actual context window of your configured models.
@@ -162,11 +190,31 @@ stats(CLASS)    → MODEL_SUCCESS_RATES  (from routing log)
 ```
 
 **Pre-routing overrides (check first):**
-- `confidence < 0.65` → force `claude:plan`
-- `IMPACT = CRITICAL` → force `claude:full`
-- `RISK = CRITICAL` → force `claude:full`
+- `confidence < 0.65` → force `tier:3`
+- `IMPACT = CRITICAL` → force `tier:3`
+- `RISK = CRITICAL` → force `tier:3`
 
-**Routing table (after overrides pass):**
+### Cloud Mode Routing Table
+
+| Class | Risk | Route |
+|---|---|---|
+| TRIVIAL | ANY | `haiku` |
+| MECHANICAL | LOW–MED | `haiku` |
+| MECHANICAL | HIGH+ | `sonnet` |
+| SINGLE_FILE | LOW | `haiku` |
+| SINGLE_FILE | MEDIUM | `sonnet` |
+| SINGLE_FILE | HIGH+ | `sonnet` |
+| MULTI_FILE | LOW | `sonnet` |
+| MULTI_FILE | MEDIUM+ | `opus` |
+| REFACTOR | LOW–MED | `sonnet` |
+| REFACTOR | HIGH+ | `opus` |
+| ARCHITECTURAL | ANY | `opus` |
+| DEBUGGING | LOW | `sonnet` |
+| DEBUGGING | MEDIUM+ | `opus` |
+| RESEARCH | ANY | `opus` |
+| INFRASTRUCTURE | ANY | `sonnet` (opus verifies) |
+
+### Hybrid Mode Routing Table
 
 | Class | Risk | Context | Route |
 |---|---|---|---|
@@ -194,11 +242,47 @@ See `references/adaptive-routing.md` for how to read the log.
 
 ## Step 6 — Execute the Route
 
-### Route: `ollama:*` (local model)
+### Cloud Mode Execution
+
+#### Route: `haiku`
+Spawn a Haiku subagent for the task. Provide:
+- Exact file paths and line ranges
+- Single clear instruction
+- Acceptance criteria
+
+Haiku is fast but literal — be precise. Don't ask it to make judgment calls.
+
+#### Route: `sonnet`
+Use Sonnet as the primary workhorse. It handles:
+- Multi-file edits with Read/Edit/Bash tools
+- Debugging with error context
+- Feature implementation from a clear spec
+
+#### Route: `opus`
+Full Opus session. Owns the entire task end-to-end:
+- Architecture decisions
+- Complex refactors
+- Planning that Sonnet/Haiku will execute
+- Verification of lower-tier work
+
+#### Route: `opus:plan` → `sonnet:exec` (or `haiku:exec`)
+**Step A — Opus produces a structured plan:**
+```
+Files to touch: [list]
+Operations:
+  - [file]: [what to do, one sentence each]
+Acceptance criteria: [how to verify success]
+```
+**Step B — Sonnet or Haiku executes each step.**
+**Step C — Opus verifies the result.**
+
+### Hybrid Mode Execution
+
+#### Route: `ollama:*` (local model)
 
 ```
 mcp__ollama__ollama_query(
-  model = "<OLLAMA_SMALL|OLLAMA_MEDIUM|OLLAMA_LARGE>",
+  model = "<configured model ID>",
   prompt = "[full task + code context]"
 )
 ```
@@ -206,7 +290,7 @@ mcp__ollama__ollama_query(
 Do NOT use Ollama for tasks that require writing files — it generates text only.
 If your setup supports Ollama tool-use or agentic execution, you can extend this route.
 
-### Route: `claude:plan`
+#### Route: `claude:plan`
 
 **Step A — Claude produces a structured plan (minimal tokens):**
 ```
@@ -227,7 +311,7 @@ Context needed: [only the signatures/APIs needed]
 - Run project-specific build/test commands
 - Scan diff: `git diff --stat`
 
-### Route: `claude:full`
+#### Route: `claude:full`
 
 Stay in Claude. Execute using Read/Edit/Bash tools directly.
 Apply all token optimization rules (Step 7) throughout.
@@ -244,6 +328,7 @@ See full techniques in `references/token-ops.md`. Summary rules:
 - **Signature-only reads** — grep for `def |class |void |fn ` when you need the API, not the body
 - **No prose summaries** — the diff is the summary; don't restate what you just did
 - **Context pruning** — list files you will actually touch before starting; don't read extras
+- **Use cheaper tiers for reads** — in cloud mode, let Haiku do file exploration before Opus plans
 
 ---
 
@@ -253,9 +338,18 @@ See full playbook in `references/escalation.md`. Summary:
 
 **Failure signals:** non-zero exit, `error:` / `SyntaxError` / `fatal:` in output, empty diff, diff > 500 lines, "I'm not sure" / "I cannot"
 
-**Escalation ladder (2 retries per tier, 3 tiers max before Claude):**
+### Cloud Mode Escalation
+```
+haiku → sonnet → opus
+  ↑        ↑
+2 retries  2 retries
+```
+
+### Hybrid Mode Escalation
 ```
 ollama:small → ollama:medium → ollama:large → claude:full
+       ↑              ↑              ↑
+   2 retries      2 retries      2 retries
 ```
 
 On each escalation: pass failure context forward, don't repeat the same prompt, `git checkout -- .` if build is broken.
@@ -270,7 +364,7 @@ See full spec in `references/adaptive-routing.md`. Summary:
 
 After every routed task, append one line to `references/routing_log.jsonl`:
 ```json
-{"date":"2026-03-29","class":"DEBUGGING","model":"ollama:large","success":false,"tokens":3200,"escalated_to":"claude:full"}
+{"date":"2026-03-29","class":"DEBUGGING","model":"sonnet","success":false,"tokens":3200,"escalated_to":"opus"}
 ```
 
 Before routing a new task, check if a routing log entry exists for the same CLASS:
@@ -278,7 +372,7 @@ Before routing a new task, check if a routing log entry exists for the same CLAS
 grep '"class":"DEBUGGING"' references/routing_log.jsonl | python3 -c "
 import sys, json
 rows = [json.loads(l) for l in sys.stdin]
-for model in ['ollama:small','ollama:medium','ollama:large']:
+for model in ['haiku','sonnet','ollama:small','ollama:medium','ollama:large']:
     total = sum(1 for r in rows if r['model']==model)
     wins  = sum(1 for r in rows if r['model']==model and r['success'])
     if total >= 3:
@@ -297,6 +391,7 @@ Output a routing audit for the current task:
 ```
 ROUTING AUDIT
 -------------
+Mode:          [cloud | hybrid]
 Task class:    [CLASS] (confidence: [N])
 Impact score:  [LOW/MEDIUM/HIGH/CRITICAL] ([N] downstream files)
 Risk score:    [N] → [LOW/MEDIUM/HIGH/CRITICAL]
@@ -308,7 +403,8 @@ Overrides triggered:
   [list any pre-routing overrides, or "none"]
 
 Offload opportunities:
-  Local models: [tasks safe for Ollama]
+  Tier 1: [tasks safe for cheapest model]
+  Tier 2: [tasks for mid-tier model]
 
 Token waste found:
   [list wasteful patterns with leaner alternatives]
@@ -322,19 +418,29 @@ Recommended execution plan:
 
 ## Environment Reference
 
-**Local models (Ollama):**
+### Cloud Mode Models
+
+| Tier | Model | Best for | Relative cost |
+|---|---|---|---|
+| `tier:1` | Claude Haiku 4.5 | Trivial, mechanical, boilerplate | $$ |
+| `tier:2` | Claude Sonnet 4.5 | Single/multi-file, debugging, features | $$$ |
+| `tier:3` | Claude Opus 4.6 | Architecture, refactors, research, verification | $$$$ |
+
+### Hybrid Mode Models (Ollama)
+
 Configure in User Configuration section above. Example setup:
 
-| Tier | Example Model | Best for |
-|---|---|---|
-| `ollama:small` | qwen2.5-coder:7b | Trivial/Mechanical |
-| `ollama:medium` | qwen2.5-coder:14b | Single-file code |
-| `ollama:large` | deepseek-coder-v2:16b | Complex code, debug |
+| Tier | Example Model | Best for | Cost |
+|---|---|---|---|
+| `tier:1` | qwen2.5-coder:7b | Trivial/Mechanical | Free |
+| `tier:2` | qwen2.5-coder:14b | Single-file code | Free |
+| `tier:3` | deepseek-coder-v2:16b | Complex code, debug | Free |
+| Escalation | Claude Sonnet | Everything else | API cost |
 
 **Verify Ollama is running:** `curl -s http://localhost:11434/api/tags | python3 -c "import sys,json; [print(m['name']) for m in json.load(sys.stdin)['models']]"`
 
 **Dependencies:**
-- [Ollama](https://ollama.ai) — local model runtime
+- [Ollama](https://ollama.ai) — local model runtime (hybrid mode only)
 - Claude Code CLI or API access
 - `git` — for impact analysis and diff-based context
 - `grep` — for symbol reference counting

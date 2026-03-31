@@ -1,0 +1,22 @@
+# Runtime data
+references/routing_log.jsonl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Claude Code local config
+.claude/
+
+# Node
+node_modules/
+
+# Archives
+*.zip

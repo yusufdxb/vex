@@ -1,10 +1,10 @@
-# Smart Routing
+# Vex
 
-An intelligent LLM routing skill for Claude Code that picks the right model for every task — so you stop overpaying for typo fixes and underpowering architecture decisions.
+Intelligent model routing for Claude Code. Picks the right model for every task — so you stop overpaying for typo fixes and underpowering architecture decisions.
 
 ## How it works
 
-Every time you start a coding task, Smart Routing steps back and asks: does this task actually need the most expensive model?
+Every time you start a coding task, Vex steps back and asks: does this task actually need the most expensive model?
 
 It classifies the task by complexity, estimates blast radius via grep and git, scores risk from file types and change patterns, and routes to the cheapest model that can handle it reliably. If that model fails, it escalates automatically — passing failure context forward, not just retrying the same prompt.
 
@@ -53,13 +53,13 @@ The result: 40–70% cost reduction with no loss in quality, because the hard ta
 Clone the repo and copy it into your Claude Code skills directory:
 
 ```bash
-git clone https://github.com/yusufdxb/claude-smart-routing.git
-cp -r claude-smart-routing/ ~/.claude/skills/smart-routing/
+git clone https://github.com/yusufdxb/vex.git
+cp -r vex/ ~/.claude/skills/vex/
 ```
 
 ### Manual installation
 
-Download and extract the [latest release](https://github.com/yusufdxb/claude-smart-routing/releases) into `~/.claude/skills/smart-routing/`.
+Download and extract the [latest release](https://github.com/yusufdxb/vex/releases) into `~/.claude/skills/vex/`.
 
 ### Prerequisites
 
@@ -123,7 +123,7 @@ The skill triggers automatically when you start any coding task in Claude Code. 
 
 ### Manual routing audit
 
-Invoke `/smart-routing` in Claude Code to see the full decision breakdown:
+Invoke `/vex` in Claude Code to see the full decision breakdown:
 
 ```
 ROUTING AUDIT
@@ -194,7 +194,7 @@ The skill gets smarter the more you use it. Your routing table evolves to match 
 
 ## Escalation
 
-When a model fails, smart-routing doesn't give up — it escalates:
+When a model fails, Vex doesn't give up — it escalates:
 
 ### Cloud Mode
 ```
@@ -280,4 +280,4 @@ See [CLAUDE.md](CLAUDE.md) for detailed contributor guidelines and [CODE_OF_COND
 
 ## Support
 
-- **Issues**: https://github.com/yusufdxb/claude-smart-routing/issues
+- **Issues**: https://github.com/yusufdxb/vex/issues

@@ -59,7 +59,7 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported via GitHub Issues at https://github.com/yusufdxb/claude-smart-routing/issues.
+reported via GitHub Issues at https://github.com/yusufdxb/vex/issues.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

@@ -1,10 +1,10 @@
 ---
-name: smart-routing
+name: vex
 description: Intelligent LLM routing system — minimizes cost while maximizing reliability. ALWAYS triggers when: any coding task begins, user mentions usage/cost/tokens/routing/models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across model tiers using confidence scoring, impact analysis, risk scoring, and adaptive learning. Supports two modes — cloud-only (Opus/Sonnet/Haiku) and hybrid (Claude + Ollama local models).
 user-invocable: true
 ---
 
-# Smart Routing — Intelligent LLM Orchestration
+# Vex — Intelligent LLM Orchestration
 
 ## User Configuration
 
@@ -384,7 +384,7 @@ for model in ['haiku','sonnet','ollama:small','ollama:medium','ollama:large']:
 
 ---
 
-## When Invoked as `/smart-routing`
+## When Invoked as `/vex`
 
 Output a routing audit for the current task:
 

@@ -1,6 +1,11 @@
 # Runtime data
 references/routing_log.jsonl
 
+# Evaluation data (user-specific, not committed)
+evaluation/data/eval_log.jsonl
+evaluation/data/environment.md
+evaluation/data/weekly_notes.md
+
 # OS files
 .DS_Store
 Thumbs.db

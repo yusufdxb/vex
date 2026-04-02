@@ -1,10 +1,10 @@
 ---
 name: vex
-description: Intelligent LLM routing system — minimizes cost while maximizing reliability. ALWAYS triggers when: any coding task begins, user mentions usage/cost/tokens/routing/models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across model tiers using confidence scoring, impact analysis, risk scoring, and adaptive learning. Supports two modes — cloud-only (Opus/Sonnet/Haiku) and hybrid (Claude + Ollama local models).
+description: Prompt-based LLM routing heuristic — intended to reduce cost by routing tasks to cheaper model tiers. Triggers when: any coding task begins, user mentions usage/cost/tokens/routing/models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across model tiers using confidence scoring, impact analysis, risk scoring, and adaptive learning. Supports two modes — cloud-only (Opus/Sonnet/Haiku) and hybrid (Claude + Ollama local models).
 user-invocable: true
 ---
 
-# Vex — Intelligent LLM Orchestration
+# Vex — LLM Routing Skill
 
 ## User Configuration
 
@@ -281,6 +281,8 @@ Acceptance criteria: [how to verify success]
 #### Route: `ollama:*` (local model)
 
 ```
+## Example — assumes an Ollama MCP server is configured in your Claude Code setup.
+## Adapt the function name and parameters to match your actual MCP server.
 mcp__ollama__ollama_query(
   model = "<configured model ID>",
   prompt = "[full task + code context]"
@@ -352,7 +354,7 @@ ollama:small → ollama:medium → ollama:large → claude:full
    2 retries      2 retries      2 retries
 ```
 
-On each escalation: pass failure context forward, don't repeat the same prompt, `git checkout -- .` if build is broken.
+On each escalation: pass failure context forward, don't repeat the same prompt. If the build is broken, `git stash` first to preserve any unrelated work, then `git checkout -- .` to revert. See `references/escalation.md` for safety details.
 
 **After every task:** log the outcome to `references/routing_log.jsonl` (see Step 9).
 

@@ -1,0 +1,8 @@
+{"date":"2026-04-01","class":"TRIVIAL","mode":"cloud","model":"haiku","success":true,"tokens":400,"escalated_to":null,"notes":"renamed variable in single file"}
+{"date":"2026-04-01","class":"SINGLE_FILE","mode":"cloud","model":"haiku","success":false,"tokens":1200,"escalated_to":"sonnet","notes":"haiku produced incorrect logic for edge case"}
+{"date":"2026-04-01","class":"SINGLE_FILE","mode":"cloud","model":"sonnet","success":true,"tokens":2800,"escalated_to":null,"notes":"escalated from haiku, completed successfully"}
+{"date":"2026-04-01","class":"DEBUGGING","mode":"cloud","model":"sonnet","success":false,"tokens":3200,"escalated_to":"opus","notes":"sonnet misdiagnosed root cause"}
+{"date":"2026-04-01","class":"DEBUGGING","mode":"cloud","model":"opus","success":true,"tokens":5400,"escalated_to":null,"notes":"identified race condition after escalation"}
+{"date":"2026-04-01","class":"MECHANICAL","mode":"hybrid","model":"ollama:medium","success":true,"tokens":0,"escalated_to":null,"notes":"added docstrings to 4 functions"}
+{"date":"2026-04-01","class":"MULTI_FILE","mode":"cloud","model":"sonnet","success":true,"tokens":4100,"escalated_to":null,"notes":"wired new endpoint across controller and routes"}
+{"date":"2026-04-01","class":"ARCHITECTURAL","mode":"cloud","model":"opus","success":true,"tokens":8200,"escalated_to":null,"notes":"redesigned auth middleware"}

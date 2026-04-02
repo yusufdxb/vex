@@ -69,7 +69,7 @@ def detect_corrupt_patch(diff: str) -> bool:
 
 #### Sonnet → Opus failure
 - Opus takes over completely — don't pass Sonnet's partial work
-- Run `git checkout -- .` if any partial changes were made
+- Run `git stash && git checkout -- .` if any partial changes were made (see Post-Corruption Recovery for safety notes)
 - Opus reads the failure output, diagnoses root cause, executes directly
 - Classify as ARCHITECTURAL or escalated DEBUGGING
 
@@ -88,17 +88,21 @@ def detect_corrupt_patch(diff: str) -> bool:
 
 #### Tier 3 → Claude failure
 - Don't pass the Ollama output to Claude — start fresh
-- Run `git checkout -- .` if any partial changes were made
+- Run `git stash && git checkout -- .` if any partial changes were made (see Post-Corruption Recovery for safety notes)
 - Give Claude the original task + any diagnostic info from failed attempts
 
 ## Post-Corruption Recovery
 
+> **Warning:** `git checkout -- .` discards **all** unstaged changes in the working tree, not just changes from the failed task. If you have other uncommitted work, it will be lost. Consider using `git stash` first, or limit the revert to specific files with `git checkout -- <file>`.
+
 If any patch breaks the build:
 ```bash
 git diff --stat              # see what changed
+git stash                    # save all changes (staged + unstaged) before reverting
 git checkout -- .            # revert all unstaged changes
-git stash                    # if changes were staged
 # Run your project's build command to verify clean state
+# If the build is clean, selectively restore non-task changes:
+# git stash pop
 ```
 
 Never proceed with a broken build state. Always verify clean before retrying.

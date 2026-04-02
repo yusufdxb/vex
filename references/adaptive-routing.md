@@ -70,6 +70,8 @@ for model in ['ollama:small','ollama:medium','ollama:large']:
 
 ## Estimated Success Rates by Task Type (bootstrap defaults)
 
+> **These are author estimates, not measured data.** They are reasonable guesses based on general model capability expectations, provided as starting points until your routing log accumulates real data. Treat them as provisional — your actual success rates will likely differ.
+
 ### Cloud Mode
 
 Use these until your log has >= 3 entries per class:
@@ -119,11 +121,12 @@ python3 -c "
 import json
 rows = [json.loads(l) for l in open('references/routing_log.jsonl')]
 top = 'opus' if rows[0].get('mode') == 'cloud' else 'claude:full'
-saved = sum(r['tokens'] for r in rows if r['model'] != top)
+lower = sum(r['tokens'] for r in rows if r['model'] != top)
 total = sum(r['tokens'] for r in rows)
 print(f'Total tokens used: {total:,}')
-print(f'Tokens on lower tiers: {saved:,}')
-if total + saved > 0:
-    print(f'Estimated savings: {saved/(total+saved)*100:.0f}%')
+print(f'Tokens on lower tiers: {lower:,}')
+if total > 0:
+    print(f'Lower-tier share: {lower/total*100:.0f}%')
+print('Note: true cost savings depend on per-tier pricing, not just token counts.')
 "
 ```

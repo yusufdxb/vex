@@ -1,77 +1,72 @@
 # Vex
 
-**Stop paying Opus prices for typo fixes.**
+A Claude Code skill that routes coding tasks to cheaper model tiers when full-power models aren't needed.
 
-Vex is a Claude Code skill that looks at every coding task before it runs and asks one question: *does this actually need the most expensive model?* If not, it sends it somewhere cheaper. If that fails, it escalates. If it keeps failing, it learns.
-
-Two modes. Zero config hassle.
-
-> **Cloud** — Opus thinks, Sonnet builds, Haiku does the boring stuff.
-> **Hybrid** — Claude plans, your local Ollama models do the grunt work for free.
+> **Status: Experimental.** Vex is a prompt-based routing heuristic, not battle-tested infrastructure. It has no benchmarks, no production usage data, and no measured savings yet. Use it if the idea interests you and you want to help validate it.
 
 ---
 
-### The pitch in 10 seconds
+## What it is
 
-```
-You: "rename this variable"
-Vex: routes to Haiku (0.3s, ~$0.001)
+Vex is a [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code) — a structured prompt that Claude reads and follows. It classifies each coding task by complexity, estimates risk and blast radius, then routes to the cheapest model tier that should be able to handle it. If that tier fails, it escalates.
 
-You: "refactor auth into middleware"
-Vex: routes to Opus (full power, full context)
+It is **not** a standalone application, API, or runtime. It's a `.md` file that changes how Claude Code behaves.
 
-You: "add docstrings to these 12 functions"
-Vex: routes to Haiku/Ollama (why waste Opus on boilerplate?)
-```
-
-**Result: 40–70% less spend. Same quality. It learns what works.**
+**Two modes:**
+- **Cloud** — routes between Opus, Sonnet, and Haiku based on task complexity
+- **Hybrid** — routes between local Ollama models and Claude, keeping simple tasks local
 
 ---
 
-## How it works
+## How routing works
 
 ```
-                    ┌─────────────┐
-                    │  Your Task  │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  Classify   │  confidence 0.0–1.0
-                    └──────┬──────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-       ┌──────▼──────┐ ┌──▼───┐ ┌──────▼──────┐
-       │   Impact    │ │ Risk │ │   Context   │
-       │  Analysis   │ │Score │ │  Estimate   │
-       └──────┬──────┘ └──┬───┘ └──────┬──────┘
-              │            │            │
-              └────────────┼────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │    Route    │◄── learns from history
-                    └──────┬──────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         │                 │                 │
-  ┌──────▼──────┐   ┌─────▼─────┐   ┌──────▼──────┐
-  │   Tier 1    │   │  Tier 2   │   │   Tier 3    │
-  │ Haiku/Local │   │  Sonnet   │   │    Opus     │
-  │   (cheap)   │   │(balanced) │   │ (full send) │
-  └─────────────┘   └───────────┘   └─────────────┘
+Task → Classify → Impact analysis → Risk score → Context estimate → Route → Execute → Log outcome
 ```
 
-Nine steps, every task:
+Each task goes through:
 
-1. **Classify** — what kind of task is this? (trivial → architectural)
-2. **Impact** — how many files break if this goes wrong?
-3. **Risk** — CI configs? DB migrations? Auth code? Score it.
-4. **Context** — how many tokens does this need?
-5. **Route** — pick the cheapest model that can handle it
-6. **Execute** — run it with an optimized prompt
-7. **Optimize** — grep before read, diff instead of re-read, no prose
-8. **Catch failures** — errors, empty output, corrupt patches → escalate
-9. **Learn** — log the outcome, adjust routing next time
+1. **Classify** — what kind of task? (trivial rename → full architectural change)
+2. **Impact** — how many files reference the symbol being changed?
+3. **Risk** — does it touch CI, auth, migrations, or other sensitive areas?
+4. **Context** — how many tokens does the task need?
+5. **Route** — pick the cheapest tier that fits the classification
+6. **Execute** — run with an optimized prompt for that tier
+7. **Catch failures** — detect errors, empty output, corrupt patches → escalate to next tier
+8. **Log** — record the outcome for future routing adjustments
+
+### Routing tables
+
+**Cloud mode:**
+
+| | Low risk | Med risk | High+ risk |
+|---|---|---|---|
+| **Trivial** | Haiku | Haiku | Haiku |
+| **Mechanical** | Haiku | Haiku | Sonnet |
+| **Single file** | Haiku | Sonnet | Sonnet |
+| **Multi file** | Sonnet | Opus | Opus |
+| **Refactor** | Sonnet | Sonnet | Opus |
+| **Architectural** | Opus | Opus | Opus |
+| **Debugging** | Sonnet | Opus | Opus |
+
+**Hybrid mode:**
+
+| | Low risk | Med risk | High+ risk |
+|---|---|---|---|
+| **Trivial** | ollama:small | ollama:small | ollama:small |
+| **Mechanical** | ollama:medium | claude:plan | claude:full |
+| **Single file** | ollama:medium | ollama:large | claude:plan |
+| **Multi file** | ollama:large | claude:full | claude:full |
+| **Refactor** | claude:plan | claude:plan | claude:full |
+| **Architectural** | claude:full | claude:full | claude:full |
+| **Debugging** | ollama:large | claude:full | claude:full |
+
+> These tables are simplified summaries. Hybrid mode routing also depends on context size — see `SKILL.md` for the full routing logic.
+
+**Hard overrides** — always routed to the top tier:
+- Classification confidence below 0.65
+- Impact or risk scored as CRITICAL
+- ARCHITECTURAL or RESEARCH tasks
 
 ---
 
@@ -84,7 +79,7 @@ cp -r vex/ ~/.claude/skills/vex/
 
 Edit the config block at the top of `SKILL.md`:
 
-**Cloud mode** (just Claude, no local models):
+**Cloud mode** (Claude models only):
 ```
 ROUTING_MODE:  cloud
 TIER_1:        claude-haiku-4-5
@@ -102,13 +97,13 @@ OLLAMA_ENDPOINT: http://localhost:11434
 CLOUD_MODEL:     claude-sonnet-4-5
 ```
 
-That's it. Vex triggers automatically on every coding task.
+Once installed, the skill prompt is available to Claude Code on every task. Whether Claude follows it depends on how it interprets the skill — there is no runtime enforcement.
 
 ---
 
-## `/vex` — see the routing decision
+## `/vex` — inspect routing decisions
 
-Run `/vex` in Claude Code to see exactly why a task was routed where it was:
+Run `/vex` in Claude Code to see how a task would be routed:
 
 ```
 ROUTING AUDIT
@@ -118,7 +113,7 @@ Task class:    SINGLE_FILE (confidence: 0.85)
 Impact:        LOW (1 downstream file)
 Risk:          1 → MEDIUM
 Context:       ~2400 tokens
-Historical:    haiku 4/5 = 80% for SINGLE_FILE
+Historical:    no routing log data yet
 Route:         haiku
 
 Overrides:     none
@@ -127,121 +122,103 @@ Token waste:   full file read on 400-line file — use grep+offset
 
 ---
 
-## Routing tables
+## Adaptive routing
 
-### Cloud mode
+The skill instructs Claude to log every routing decision to `references/routing_log.jsonl`. After 3+ data points per model+task combination, routing is designed to adjust:
 
-| | Low risk | Med risk | High+ risk |
-|---|---|---|---|
-| **Trivial** | Haiku | Haiku | Sonnet |
-| **Mechanical** | Haiku | Haiku | Sonnet |
-| **Single file** | Haiku | Sonnet | Sonnet |
-| **Multi file** | Sonnet | Opus | Opus |
-| **Refactor** | Sonnet | Opus | Opus |
-| **Architectural** | Opus | Opus | Opus |
-| **Debugging** | Sonnet | Opus | Opus |
+- **< 40% success rate** → that tier is skipped for that task type
+- **> 80% success rate** → that tier is preferred even at slightly higher risk
 
-### Hybrid mode
-
-| | Low risk | Med risk | High+ risk |
-|---|---|---|---|
-| **Trivial** | ollama:small | ollama:small | claude:plan |
-| **Mechanical** | ollama:medium | claude:plan | claude:full |
-| **Single file** | ollama:medium | ollama:large | claude:plan |
-| **Multi file** | ollama:large | claude:full | claude:full |
-| **Refactor** | claude:plan | claude:full | claude:full |
-| **Architectural** | claude:full | claude:full | claude:full |
-| **Debugging** | ollama:large | claude:full | claude:full |
-
-**Hard overrides** — always top tier, no exceptions:
-- Confidence below 0.65
-- Impact or risk = CRITICAL
-- ARCHITECTURAL or RESEARCH tasks
-
----
-
-## It learns
-
-Every routing decision gets logged:
-
-```json
-{"class":"SINGLE_FILE","model":"haiku","success":true,"tokens":400}
-```
-
-After 3+ data points per model+task combo:
-- **< 40% success** → skipped automatically next time
-- **> 80% success** → preferred even at slightly higher risk
-
-Your routing table evolves. Week 1 uses bootstrap estimates. Week 4 uses your data.
+Until enough data accumulates, routing uses author-estimated bootstrap rates (see `references/adaptive-routing.md`). These estimates are not measured — they are starting-point guesses that get replaced by your actual data.
 
 ---
 
 ## Escalation
 
-Models fail. Vex handles it.
+When a model fails, Vex escalates to the next tier:
 
-**Cloud:** `Haiku → Sonnet → Opus` (2 retries per tier)
-**Hybrid:** `small → medium → large → Claude` (2 retries per tier)
+- **Cloud:** Haiku → Sonnet → Opus (2 retries per tier)
+- **Hybrid:** small → medium → large → Claude (2 retries per tier)
 
-Each escalation:
-- Passes failure context forward (never repeats the same prompt)
-- Reverts partial changes (`git checkout -- .`)
-- Logs the failure for adaptive learning
+Each escalation passes failure context forward and reverts partial changes before retrying.
 
 ---
 
-## What's inside
+## Repo structure
 
 ```
 vex/
-├── SKILL.md              # The brain — 9-step routing pipeline
+├── SKILL.md                     # Core routing logic (the skill prompt)
 ├── references/
-│   ├── adaptive-routing.md   # How the learning loop works
-│   ├── escalation.md         # Failure detection & recovery
-│   ├── impact-analysis.md    # Blast radius estimation
-│   ├── token-ops.md          # 8 token optimization techniques
-│   └── routing_log.jsonl     # Created at runtime
-├── README.md
+│   ├── adaptive-routing.md      # Routing log spec and bootstrap estimates
+│   ├── escalation.md            # Failure detection and recovery
+│   ├── impact-analysis.md       # Blast radius estimation
+│   └── token-ops.md             # Token optimization techniques
+├── evaluation/
+│   ├── METHODOLOGY.md           # Study design, metrics, threats to validity
+│   ├── SCORING_RUBRIC.md        # 1-5 quality scoring rubric
+│   ├── EXPERIMENT_PROTOCOL.md   # Daily workflow for logging tasks
+│   ├── RESULTS_TEMPLATE.md      # Template for publishing findings
+│   ├── scripts/
+│   │   ├── analyze.py           # Summary statistics from eval log
+│   │   └── log_task.sh          # Interactive helper to log entries
+│   ├── examples/
+│   │   └── sample_eval_log.jsonl  # Example entries (SAMPLE, not real)
+│   └── data/                    # Your evaluation data (gitignored)
+├── examples/
+│   └── routing_log_example.jsonl  # Sample routing log entries
+├── EVALUATION.md                # Evaluation plan (no results yet)
 ├── CHANGELOG.md
-├── CLAUDE.md             # Contributor guidelines
+├── CLAUDE.md                    # Contributor guidelines
 ├── CODE_OF_CONDUCT.md
-├── LICENSE               # MIT
-├── .gitignore
-└── .gitattributes
+├── LICENSE                      # MIT
+└── README.md
 ```
 
 ---
 
-## Who is this for
+## Limitations
 
-- You're tired of paying Opus rates for `s/foo/bar/g`
-- You have a local GPU and want it to earn its keep
-- You want to actually see *why* a model was chosen, not just trust vibes
-- You want routing that gets smarter over time, not a static heuristic
+- **No measured savings.** The premise — that routing saves money without sacrificing quality — is plausible but unproven for this implementation. Cost reduction depends entirely on how often cheaper tiers succeed for your workload.
+- **Prompt-based, not enforced.** Vex is a set of instructions Claude follows. There is no runtime enforcement, no type checking, no guaranteed execution path. Claude interprets the skill prompt and may deviate.
+- **Bootstrap estimates are guesses.** The initial success rates in `references/adaptive-routing.md` are author estimates, not empirical measurements. They exist to seed the routing tables until real data accumulates.
+- **Ollama limitations.** Local models via Ollama cannot use Claude Code's tool system (Read, Edit, Bash). They generate text only. This limits what tasks can actually be offloaded in hybrid mode.
+- **No evaluation results.** There are no benchmarks, A/B tests, or controlled comparisons. See `EVALUATION.md` for the planned evaluation approach.
+- **Escalation uses `git checkout -- .`** to revert failed patches, which discards all unstaged changes. This is intentional but destructive — any uncommitted work outside the current task will be lost.
 
 ---
 
-## Philosophy
+## Current evidence
 
-**Route by evidence.** The log tells you what works. Bootstrap estimates get replaced by real data.
+**Honest status: none.**
 
-**Fail fast, escalate smart.** Two retries, then move up. Don't burn tokens on a losing bet.
+There are no routing logs, benchmark results, or production usage reports. The routing tables and bootstrap estimates are based on the author's judgment about model capabilities, not measured outcomes.
 
-**Minimize tokens, not quality.** Grep before read. Diff instead of re-read. The cheapest token is the one you never use.
+An evaluation framework is available in `evaluation/` with a methodology, scoring rubric, experiment protocol, analysis scripts, and results template. See `EVALUATION.md` for the full plan.
 
-**No lock-in.** Cloud mode, hybrid mode, swap models in one config block.
+What would constitute evidence:
+- 50+ logged routing decisions across diverse task types (use `evaluation/scripts/log_task.sh`)
+- Measured cost comparison against an Opus-only baseline
+- Quality scores assigned per the rubric in `evaluation/SCORING_RUBRIC.md`
+- Results published using `evaluation/RESULTS_TEMPLATE.md` with all caveats
+
+If you generate this data, please share it via an issue or PR.
+
+---
+
+## Who this is for
+
+- You spend significant money on Claude API calls and want to experiment with cost reduction
+- You have a local GPU and want to try offloading simple tasks to Ollama
+- You want transparent routing decisions you can inspect and override
+- You're comfortable using an experimental, unvalidated tool
 
 ---
 
 ## Contributing
 
-Fork it, branch it, PR it. See [CLAUDE.md](CLAUDE.md) for guidelines.
+See [CLAUDE.md](CLAUDE.md) for guidelines. Evidence-backed improvements to routing thresholds, new language support for impact analysis, and evaluation data are especially welcome.
 
 ## License
 
 [MIT](LICENSE)
-
-## Links
-
-- [Issues](https://github.com/yusufdxb/vex/issues)
-- [Changelog](CHANGELOG.md)

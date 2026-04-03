@@ -1,6 +1,6 @@
 # Evaluation Plan
 
-> **Status: No results yet.** This document describes how Vex should be evaluated, not results that have been collected.
+> **Status: Evaluation not started.** The evaluation framework is ready but no data has been collected. Zero tasks have been logged. This document describes how to evaluate Vex, not results that have been collected.
 
 ## Evaluation framework
 
@@ -107,3 +107,17 @@ evaluation/
 - `examples/routing_log_example.jsonl` — **SAMPLE DATA**, fabricated routing log entries
 
 **Nothing in this repository constitutes measured evidence.** All results must come from your own logged evaluation.
+
+## What is still missing (as of 2026-04-03)
+
+Before findings can be published, all of the following must exist:
+
+- [x] `evaluation/data/pre_registration.md` — frozen thresholds, primary metric, exclusion and falsification criteria
+- [x] `evaluation/data/environment.md` — machine specs, Claude Code version, model versions, typical codebases and languages
+- [ ] 50+ entries in `evaluation/data/eval_log.jsonl` (currently: 0)
+- [ ] At least 5 entries per task class for any class-specific claims
+- [ ] Minimum 2 weeks of regular usage (currently: 0 days)
+- [ ] Weekly notes in `evaluation/data/weekly_notes.md` (currently: blank template)
+- [ ] At least one run of `evaluation/scripts/analyze.py` against real data
+
+Until these are met, the repo should not contain a findings section, and no public claims about cost savings, quality, or routing accuracy are supported.

@@ -183,18 +183,18 @@ vex/
 - **Prompt-based, not enforced.** Vex is a set of instructions Claude follows. There is no runtime enforcement, no type checking, no guaranteed execution path. Claude interprets the skill prompt and may deviate.
 - **Bootstrap estimates are guesses.** The initial success rates in `references/adaptive-routing.md` are author estimates, not empirical measurements. They exist to seed the routing tables until real data accumulates.
 - **Ollama limitations.** Local models via Ollama cannot use Claude Code's tool system (Read, Edit, Bash). They generate text only. This limits what tasks can actually be offloaded in hybrid mode.
-- **No evaluation results.** There are no benchmarks, A/B tests, or controlled comparisons. See `EVALUATION.md` for the planned evaluation approach.
+- **No evaluation results.** The evaluation framework exists but data collection has not started. There are no benchmarks, A/B tests, or controlled comparisons. See `EVALUATION.md` for the plan and prerequisites.
 - **Escalation uses `git checkout -- .`** to revert failed patches, which discards all unstaged changes. This is intentional but destructive — any uncommitted work outside the current task will be lost.
 
 ---
 
 ## Current evidence
 
-**Honest status: none.**
+**Honest status: no data collected.**
 
-There are no routing logs, benchmark results, or production usage reports. The routing tables and bootstrap estimates are based on the author's judgment about model capabilities, not measured outcomes.
+The evaluation framework is ready (`evaluation/`) but data collection has not started. There are zero logged tasks, no routing logs, no benchmark results, and no production usage reports. The routing tables and bootstrap estimates are based on the author's judgment about model capabilities, not measured outcomes.
 
-An evaluation framework is available in `evaluation/` with a methodology, scoring rubric, experiment protocol, analysis scripts, and results template. See `EVALUATION.md` for the full plan.
+See `EVALUATION.md` for the evaluation plan and a checklist of what must exist before findings can be published.
 
 What would constitute evidence:
 - 50+ logged routing decisions across diverse task types (use `evaluation/scripts/log_task.sh`)

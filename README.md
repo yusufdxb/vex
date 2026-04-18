@@ -1,8 +1,9 @@
 # Vex
 
-A Claude Code skill that routes coding tasks to cheaper model tiers when full-power models aren't needed.
+A Claude Code skill that routes coding tasks to cheaper model tiers when full-power models aren't needed, plus two opt-in output-compression modes that cut prose token cost by ~20% on average (up to 52% on prose-heavy prompts).
 
-> **Status: Experimental.** Vex is a prompt-based routing heuristic, not battle-tested infrastructure. It has no benchmarks, no production usage data, and no measured savings yet. Use it if the idea interests you and you want to help validate it.
+[![version](https://img.shields.io/badge/version-1.5.0-blue)](CHANGELOG.md)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
 
@@ -10,11 +11,46 @@ A Claude Code skill that routes coding tasks to cheaper model tiers when full-po
 
 Vex is a [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code) — a structured prompt that Claude reads and follows. It classifies each coding task by complexity, estimates risk and blast radius, then routes to the cheapest model tier that should be able to handle it. If that tier fails, it escalates.
 
-It is **not** a standalone application, API, or runtime. It's a `.md` file that changes how Claude Code behaves.
+It is **not** a standalone application, API, or runtime. It's a Markdown file (`SKILL.md`) plus four reference docs that change how Claude Code behaves when installed as a skill.
 
-**Two modes:**
-- **Cloud** — routes between Opus, Sonnet, and Haiku based on task complexity
-- **Hybrid** — routes between local Ollama models and Claude, keeping simple tasks local
+**Two routing modes:**
+- **Cloud** — routes between Opus, Sonnet, and Haiku
+- **Hybrid** — routes between local Ollama models and Claude
+
+**Two output-compression modes** (opt-in, session-scoped):
+- `/vex terse` — full sentences, ≤15 words, no preamble
+- `/vex caveman` — 1-5 words, broken grammar, no punctuation
+
+---
+
+## Install
+
+```bash
+git clone https://github.com/yusufdxb/vex.git
+cp -r vex/ ~/.claude/skills/vex/
+```
+
+Edit the config block at the top of `SKILL.md`:
+
+**Cloud mode (Claude only):**
+```
+ROUTING_MODE:  cloud
+TIER_1:        claude-haiku-4-5
+TIER_2:        claude-sonnet-4-5
+TIER_3:        claude-opus-4-6
+```
+
+**Hybrid mode (Claude + Ollama):**
+```
+ROUTING_MODE:    hybrid
+OLLAMA_SMALL:    qwen2.5-coder:7b
+OLLAMA_MEDIUM:   qwen2.5-coder:14b
+OLLAMA_LARGE:    deepseek-coder-v2:16b
+OLLAMA_ENDPOINT: http://localhost:11434
+CLOUD_MODEL:     claude-sonnet-4-5
+```
+
+Once installed, the skill prompt is available to Claude Code on every task.
 
 ---
 
@@ -24,15 +60,13 @@ It is **not** a standalone application, API, or runtime. It's a `.md` file that 
 Task → Classify → Impact analysis → Risk score → Context estimate → Route → Execute → Log outcome
 ```
 
-Each task goes through:
-
-1. **Classify** — what kind of task? (trivial rename → full architectural change)
-2. **Impact** — how many files reference the symbol being changed?
-3. **Risk** — does it touch CI, auth, migrations, or other sensitive areas?
-4. **Context** — how many tokens does the task need?
-5. **Route** — pick the cheapest tier that fits the classification
-6. **Execute** — run with an optimized prompt for that tier
-7. **Catch failures** — detect errors, empty output, corrupt patches → escalate to next tier
+1. **Classify** — trivial rename through architectural change
+2. **Impact** — how many files reference the symbol being changed
+3. **Risk** — does it touch CI, auth, migrations, or other sensitive areas
+4. **Context** — token budget the task needs
+5. **Route** — cheapest tier that fits the classification
+6. **Execute** — optimized prompt for that tier
+7. **Catch failures** — detect errors, empty output, corrupt patches → escalate
 8. **Log** — record the outcome for future routing adjustments
 
 ### Routing tables
@@ -61,7 +95,7 @@ Each task goes through:
 | **Architectural** | claude:full | claude:full | claude:full |
 | **Debugging** | ollama:large | claude:full | claude:full |
 
-> These tables are simplified summaries. Hybrid mode routing also depends on context size — see `SKILL.md` for the full routing logic.
+> Hybrid mode routing also depends on context size — see `SKILL.md` for the full logic.
 
 **Hard overrides** — always routed to the top tier:
 - Classification confidence below 0.65
@@ -70,46 +104,25 @@ Each task goes through:
 
 ---
 
-## Quick start
-
-```bash
-git clone https://github.com/yusufdxb/vex.git
-cp -r vex/ ~/.claude/skills/vex/
-```
-
-Edit the config block at the top of `SKILL.md`:
-
-**Cloud mode** (Claude models only):
-```
-ROUTING_MODE:  cloud
-TIER_1:        claude-haiku-4-5
-TIER_2:        claude-sonnet-4-5
-TIER_3:        claude-opus-4-6
-```
-
-**Hybrid mode** (Claude + Ollama):
-```
-ROUTING_MODE:    hybrid
-OLLAMA_SMALL:    qwen2.5-coder:7b
-OLLAMA_MEDIUM:   qwen2.5-coder:14b
-OLLAMA_LARGE:    deepseek-coder-v2:16b
-OLLAMA_ENDPOINT: http://localhost:11434
-CLOUD_MODEL:     claude-sonnet-4-5
-```
-
-Once installed, the skill prompt is available to Claude Code on every task. Whether Claude follows it depends on how it interprets the skill — there is no runtime enforcement.
-
----
-
 ## Output compression modes
 
-Routing cuts input cost. Output tokens also cost money. Vex ships two opt-in modes that compress Claude's prose output without touching the actual work (code, commits, tool calls stay normal):
+Routing cuts input cost. Output tokens also cost money. Vex ships two opt-in modes that compress Claude's prose without touching real work (code, commits, tool calls stay normal):
 
 | Command | Style | Example reply |
 |---|---|---|
-| `/vex terse` | Full sentences, <=15 words, no preamble or markdown | `Reading config. Patching route. Running tests.` |
+| `/vex terse` | Full sentences, ≤15 words, no preamble or markdown | `Reading config. Patching route. Running tests.` |
 | `/vex caveman` | 1-5 words, broken grammar, no punctuation | `file read edit next` |
 | `/vex normal` | Revert to default output style | — |
+
+### Measured savings (Sonnet, n=3 per combo)
+
+| Mode    | Avg output tokens | vs normal |
+|---------|-------------------|-----------|
+| normal  | 845               | —         |
+| terse   | 684               | **-19%**  |
+| caveman | 666               | **-21%**  |
+
+Per-class results are uneven — modes save 30-50% on prose-heavy prompts (debugging, research, trivial) and can cost 10-20% more on structured-output prompts (single-file code, architectural with tradeoffs). Use them when you're producing prose, skip them when you're producing code blocks. Full data and caveats in [`evaluation/COMPRESSION_RESULTS.md`](evaluation/COMPRESSION_RESULTS.md).
 
 Modes are session-scoped. See `SKILL.md` Step 10 for the full spec.
 
@@ -138,12 +151,12 @@ Token waste:   full file read on 400-line file — use grep+offset
 
 ## Adaptive routing
 
-The skill instructs Claude to log every routing decision to `references/routing_log.jsonl`. After 3+ data points per model+task combination, routing is designed to adjust:
+The skill instructs Claude to log every routing decision to `references/routing_log.jsonl`. After 3+ data points per model+task combination, routing adjusts:
 
 - **< 40% success rate** → that tier is skipped for that task type
 - **> 80% success rate** → that tier is preferred even at slightly higher risk
 
-Until enough data accumulates, routing uses author-estimated bootstrap rates (see `references/adaptive-routing.md`). These estimates are not measured — they are starting-point guesses that get replaced by your actual data.
+Until enough data accumulates, routing uses author-estimated bootstrap rates (`references/adaptive-routing.md`). These are starting-point estimates that get replaced by your actual data.
 
 ---
 
@@ -173,15 +186,17 @@ vex/
 │   ├── SCORING_RUBRIC.md        # 1-5 quality scoring rubric
 │   ├── EXPERIMENT_PROTOCOL.md   # Daily workflow for logging tasks
 │   ├── RESULTS_TEMPLATE.md      # Template for publishing findings
+│   ├── COMPRESSION_RESULTS.md   # Measured output-compression savings
+│   ├── compression_prompts.jsonl
 │   ├── scripts/
-│   │   ├── analyze.py           # Summary statistics from eval log
-│   │   └── log_task.sh          # Interactive helper to log entries
-│   ├── examples/
-│   │   └── sample_eval_log.jsonl  # Example entries (SAMPLE, not real)
-│   └── data/                    # Your evaluation data (gitignored)
-├── examples/
-│   └── routing_log_example.jsonl  # Sample routing log entries
-├── EVALUATION.md                # Evaluation plan (no results yet)
+│   │   ├── analyze.py
+│   │   ├── log_task.sh
+│   │   └── measure_compression.py
+│   ├── examples/sample_eval_log.jsonl
+│   └── data/                    # User evaluation data (gitignored)
+├── tests/                       # Unit tests for measurement script
+├── examples/routing_log_example.jsonl
+├── EVALUATION.md                # Evaluation plan
 ├── CHANGELOG.md
 ├── CLAUDE.md                    # Contributor guidelines
 ├── CODE_OF_CONDUCT.md
@@ -191,47 +206,49 @@ vex/
 
 ---
 
-## Limitations
+## What is and isn't measured
 
-- **No measured savings.** The premise — that routing saves money without sacrificing quality — is plausible but unproven for this implementation. Cost reduction depends entirely on how often cheaper tiers succeed for your workload.
-- **Prompt-based, not enforced.** Vex is a set of instructions Claude follows. There is no runtime enforcement, no type checking, no guaranteed execution path. Claude interprets the skill prompt and may deviate.
-- **Bootstrap estimates are guesses.** The initial success rates in `references/adaptive-routing.md` are author estimates, not empirical measurements. They exist to seed the routing tables until real data accumulates.
-- **Ollama limitations.** Local models via Ollama cannot use Claude Code's tool system (Read, Edit, Bash). They generate text only. This limits what tasks can actually be offloaded in hybrid mode.
-- **No evaluation results.** The evaluation framework exists but data collection has not started. There are no benchmarks, A/B tests, or controlled comparisons. See `EVALUATION.md` for the plan and prerequisites.
-- **Escalation uses `git checkout -- .`** to revert failed patches, which discards all unstaged changes. This is intentional but destructive — any uncommitted work outside the current task will be lost.
+**Measured:**
+- Output-compression mode savings on Sonnet — `evaluation/COMPRESSION_RESULTS.md` (n=3 per combo, 54 total calls, 19-21% aggregate savings with per-class variance)
+
+**Not measured yet:**
+- Routing accuracy vs. manual model selection
+- Cost savings from routing itself (vs. an Opus-only baseline)
+- Quality scores per tier
+- Escalation effectiveness
+- Hybrid-mode local-model offload rate
+
+These require logged-task data that has to come from your own use. See `EVALUATION.md` for the plan and `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow if you want to contribute data.
 
 ---
 
-## Current evidence
+## Limitations (real, not boilerplate)
 
-**Honest status: no data collected.**
-
-The evaluation framework is ready (`evaluation/`) but data collection has not started. There are zero logged tasks, no routing logs, no benchmark results, and no production usage reports. The routing tables and bootstrap estimates are based on the author's judgment about model capabilities, not measured outcomes.
-
-See `EVALUATION.md` for the evaluation plan and a checklist of what must exist before findings can be published.
-
-What would constitute evidence:
-- 50+ logged routing decisions across diverse task types (use `evaluation/scripts/log_task.sh`)
-- Measured cost comparison against an Opus-only baseline
-- Quality scores assigned per the rubric in `evaluation/SCORING_RUBRIC.md`
-- Results published using `evaluation/RESULTS_TEMPLATE.md` with all caveats
-
-If you generate this data, please share it via an issue or PR.
+- **Prompt-based, not enforced.** Vex is instructions Claude follows. There is no runtime enforcement, no guaranteed execution path. Claude can deviate from the routing logic depending on session context.
+- **Routing-quality claims are unverified.** The cost/quality tradeoffs of routing Haiku vs. Sonnet vs. Opus are plausible but have not been measured on real workloads in this repo. Bootstrap success rates in `references/adaptive-routing.md` are author estimates.
+- **Compression savings are uneven.** ~20% aggregate on Sonnet, but negative on SINGLE_FILE and ARCHITECTURAL prompts (see measurement doc). Use modes when producing prose; avoid them when producing structured code output.
+- **Ollama limits in hybrid mode.** Local models via Ollama can't use Claude Code's tool system (Read, Edit, Bash) — they generate text only. This caps how much work can be offloaded.
+- **Escalation uses `git checkout -- .`** to revert failed patches, which discards unstaged changes. Intentional, but destructive if you have uncommitted work outside the current task.
 
 ---
 
 ## Who this is for
 
-- You spend significant money on Claude API calls and want to experiment with cost reduction
+- You spend real money on Claude API calls and want to experiment with output-token reduction (measured) and tier routing (unmeasured but transparent)
 - You have a local GPU and want to try offloading simple tasks to Ollama
-- You want transparent routing decisions you can inspect and override
-- You're comfortable using an experimental, unvalidated tool
+- You want transparent routing decisions you can inspect and override with `/vex`
+- You prefer a skill whose limitations are documented over one that overclaims
 
 ---
 
 ## Contributing
 
-See [CLAUDE.md](CLAUDE.md) for guidelines. Evidence-backed improvements to routing thresholds, new language support for impact analysis, and evaluation data are especially welcome.
+See [CLAUDE.md](CLAUDE.md) for guidelines. The most valuable contributions right now are:
+
+- Evaluation data: log real tasks with `evaluation/scripts/log_task.sh` and share the JSONL
+- Routing-threshold evidence from the routing log
+- Language support in `references/impact-analysis.md`
+- Additional compression-measurement runs on Opus or Haiku
 
 ## License
 

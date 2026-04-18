@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.5.0 — 2026-04-18
+
+### Measured compression data + test suite
+
+- Ran `measure_compression.py --runs 3` on Sonnet: 54 calls (6 prompts × 3 modes × 3 runs). Terse saves **-19.0%** output tokens on average, caveman saves **-21.1%**. Per-class savings range from +52% (DEBUGGING/caveman) to -18% (SINGLE_FILE/terse) — modes help on prose-heavy prompts and hurt on structured-output prompts.
+- Replaced `evaluation/PRELIMINARY_COMPRESSION_RESULTS.md` with `evaluation/COMPRESSION_RESULTS.md` — full per-class breakdown, variance ranges, and honest caveats about skill contamination and structured-output regressions.
+- Added `tests/test_measure_compression.py` — 21 unit tests covering prompt loading, cost estimation, response parsing, summary computation, and pricing consistency. Stdlib-only (no pytest dependency). Runs in <10ms.
+- Added `.github/workflows/tests.yml` — unit tests + Python syntax check on 3.9 / 3.11 / 3.12 for every push and PR to main.
+- Rewrote `README.md`: dropped "Experimental" banner, added measured-savings table, split "measured vs not measured" explicitly, tightened limitations section to real constraints (prompt-based, routing unvalidated, compression uneven).
+- Updated `EVALUATION.md` status line to reflect that compression is measured and routing data collection is the open item.
+
 ## v1.4.2 — 2026-04-17
 
 ### Preliminary compression measurement + claude-cli backend

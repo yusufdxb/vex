@@ -1,6 +1,6 @@
 # Evaluation Plan
 
-> **Status: Evaluation not started.** The evaluation framework is ready but no data has been collected. Zero tasks have been logged. This document describes how to evaluate Vex, not results that have been collected.
+> **Status: Partial data.** Output-compression modes have been measured (n=3 per combo on Sonnet — see `evaluation/COMPRESSION_RESULTS.md`). Routing itself still has no logged task data. This document describes the full evaluation plan; only the compression section has results so far.
 
 ## Evaluation framework
 
@@ -106,7 +106,7 @@ python3 evaluation/scripts/measure_compression.py --runs 3
 python3 evaluation/scripts/measure_compression.py --backend claude-cli --runs 3
 ```
 
-A first-pass result (n=1, sonnet, `claude -p`) is logged in `evaluation/PRELIMINARY_COMPRESSION_RESULTS.md`.
+Measured results (n=3 per combo, sonnet, `claude -p`) are in `evaluation/COMPRESSION_RESULTS.md`.
 
 ### 5. Escalation effectiveness
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.2 — 2026-04-17
+
+### Preliminary compression measurement + claude-cli backend
+
+- Added `evaluation/PRELIMINARY_COMPRESSION_RESULTS.md` with first-pass data from a single run on Sonnet (n=1 per combo): terse saves ~29% of output tokens overall, caveman ~45-60% on prose-heavy prompts but with one outlier that zeroed the aggregate. Results clearly marked preliminary with a full caveats section and explicit "what to change before treating as evidence" checklist.
+- Added `--backend claude-cli` flag to `evaluation/scripts/measure_compression.py`: shells out to `claude -p --output-format json` so the script can run on a Claude Code subscription without an API key. Default remains `--backend api` for reproducibility by readers without Claude Code.
+- Updated `EVALUATION.md` section 4 with both backend invocations and a link to the preliminary results doc.
+
 ## v1.4.1 — 2026-04-17
 
 ### Compression-mode measurement script

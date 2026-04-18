@@ -27,6 +27,7 @@ Usage:
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
 import urllib.error
@@ -74,6 +75,42 @@ def load_prompts(path):
     return prompts
 
 
+def call_claude_cli(model, system, user_prompt, timeout=180):
+    """Invoke `claude -p` and return a response dict matching the Anthropic
+    Messages API shape (usage.input_tokens, usage.output_tokens, content).
+
+    Uses the user's Claude Code subscription auth — no API key needed.
+    Loads the user's installed skills by default, which can contaminate
+    replies (e.g., meta-skill preambles). Pass `--bare` upstream if you need
+    an isolated baseline, but note that `--bare` disables subscription auth
+    and requires ANTHROPIC_API_KEY.
+    """
+    args = [
+        "claude", "-p",
+        "--output-format", "json",
+        "--tools", "",
+        "--no-session-persistence",
+        "--model", model,
+    ]
+    if system:
+        args += ["--append-system-prompt", system]
+    args += [user_prompt]
+    r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    if r.returncode != 0:
+        raise RuntimeError(f"claude -p exited {r.returncode}: {(r.stderr or r.stdout)[:200]}")
+    raw = json.loads(r.stdout)
+    # Normalize to the shape the rest of the script expects.
+    usage = raw.get("usage", {})
+    text = raw.get("result", "")
+    return {
+        "usage": {
+            "input_tokens": usage.get("input_tokens", 0),
+            "output_tokens": usage.get("output_tokens", 0),
+        },
+        "content": [{"type": "text", "text": text}],
+    }
+
+
 def call_anthropic(api_key, model, system, user_prompt, max_tokens=512):
     body = {
         "model": model,
@@ -110,7 +147,7 @@ def extract_text(resp):
     return ""
 
 
-def run_measurements(prompts, modes, model, api_key, runs, out_path):
+def run_measurements(prompts, modes, model, api_key, runs, out_path, backend="api"):
     results = []
     total_calls = len(prompts) * len(modes) * runs
     call_idx = 0
@@ -120,7 +157,10 @@ def run_measurements(prompts, modes, model, api_key, runs, out_path):
                 call_idx += 1
                 system = SYSTEM_PROMPTS[mode]
                 try:
-                    resp = call_anthropic(api_key, model, system, prompt["prompt"])
+                    if backend == "claude-cli":
+                        resp = call_claude_cli(model, system, prompt["prompt"])
+                    else:
+                        resp = call_anthropic(api_key, model, system, prompt["prompt"])
                 except urllib.error.HTTPError as e:
                     body = e.read().decode(errors="replace")[:200]
                     print(f"  [{call_idx}/{total_calls}] HTTPError {e.code} on {prompt['id']}/{mode}: {body}", file=sys.stderr)
@@ -228,12 +268,23 @@ def main():
                         help="Comma-separated modes to run (default: %(default)s)")
     parser.add_argument("--out", default="evaluation/data/compression_results.jsonl",
                         help="Output JSONL path (default: %(default)s, gitignored)")
+    parser.add_argument("--backend", default="api", choices=["api", "claude-cli"],
+                        help="Where to send requests: 'api' uses ANTHROPIC_API_KEY via the Messages API, "
+                             "'claude-cli' shells out to `claude -p` and uses your Claude Code subscription. "
+                             "claude-cli loads your installed skills, which can contaminate replies. "
+                             "(default: %(default)s)")
     args = parser.parse_args()
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY env var is not set.", file=sys.stderr)
+    if args.backend == "api" and not api_key:
+        print("ERROR: ANTHROPIC_API_KEY env var is not set (required for --backend api).", file=sys.stderr)
         sys.exit(1)
+    if args.backend == "claude-cli":
+        try:
+            subprocess.run(["claude", "--version"], capture_output=True, check=True, timeout=10)
+        except Exception as e:
+            print(f"ERROR: `claude --version` failed (required for --backend claude-cli): {e}", file=sys.stderr)
+            sys.exit(1)
 
     prompts_path = Path(args.prompts)
     if not prompts_path.exists():
@@ -253,14 +304,15 @@ def main():
     if args.model not in PRICING:
         print(f"Warning: no pricing data for model '{args.model}' — cost columns will be empty.", file=sys.stderr)
 
+    print(f"Backend:          {args.backend}")
     print(f"Model:            {args.model}")
     print(f"Prompts:          {len(prompts)} from {prompts_path}")
     print(f"Modes:            {', '.join(modes)}")
     print(f"Runs per combo:   {args.runs}")
-    print(f"Total API calls:  {len(prompts) * len(modes) * args.runs}")
+    print(f"Total calls:      {len(prompts) * len(modes) * args.runs}")
     print()
 
-    results = run_measurements(prompts, modes, args.model, api_key, args.runs, args.out)
+    results = run_measurements(prompts, modes, args.model, api_key, args.runs, args.out, backend=args.backend)
     summarize(results)
 
 

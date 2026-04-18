@@ -98,9 +98,15 @@ evaluation/
 
 **Usage:**
 ```
+# API backend (requires ANTHROPIC_API_KEY)
 export ANTHROPIC_API_KEY=...
 python3 evaluation/scripts/measure_compression.py --runs 3
+
+# Claude Code subscription backend (uses `claude -p`, no API key)
+python3 evaluation/scripts/measure_compression.py --backend claude-cli --runs 3
 ```
+
+A first-pass result (n=1, sonnet, `claude -p`) is logged in `evaluation/PRELIMINARY_COMPRESSION_RESULTS.md`.
 
 ### 5. Escalation effectiveness
 

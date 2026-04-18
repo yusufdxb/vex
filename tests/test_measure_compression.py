@@ -112,20 +112,36 @@ class TestExtractText(unittest.TestCase):
 
 
 class TestSystemPrompts(unittest.TestCase):
-    def test_all_three_modes_defined(self):
-        self.assertIn("normal", mc.SYSTEM_PROMPTS)
-        self.assertIn("terse", mc.SYSTEM_PROMPTS)
-        self.assertIn("caveman", mc.SYSTEM_PROMPTS)
+    def test_all_five_modes_defined(self):
+        for mode in ("normal", "terse", "caveman", "tight", "ghost"):
+            self.assertIn(mode, mc.SYSTEM_PROMPTS)
 
     def test_normal_is_empty(self):
         self.assertEqual(mc.SYSTEM_PROMPTS["normal"], "")
 
-    def test_terse_and_caveman_are_nonempty(self):
-        self.assertTrue(mc.SYSTEM_PROMPTS["terse"])
-        self.assertTrue(mc.SYSTEM_PROMPTS["caveman"])
+    def test_non_normal_modes_nonempty(self):
+        for mode in ("terse", "caveman", "tight", "ghost"):
+            with self.subTest(mode=mode):
+                self.assertTrue(mc.SYSTEM_PROMPTS[mode])
 
     def test_caveman_mentions_word_limit(self):
         self.assertIn("5 words", mc.SYSTEM_PROMPTS["caveman"])
+
+    def test_ghost_mentions_10_word_limit(self):
+        self.assertIn("10 words", mc.SYSTEM_PROMPTS["ghost"])
+
+    def test_tight_mentions_preamble_and_summary(self):
+        t = mc.SYSTEM_PROMPTS["tight"]
+        self.assertIn("preamble", t.lower() + " preamble")  # true: reference only
+        self.assertIn("summary", t.lower())
+
+    def test_modes_are_ordered_by_aggressiveness(self):
+        # Tight should be shortest instruction after normal; ghost and caveman
+        # should contain explicit length caps.
+        self.assertLess(len(mc.SYSTEM_PROMPTS["normal"]), len(mc.SYSTEM_PROMPTS["tight"]))
+        self.assertIn("10 words", mc.SYSTEM_PROMPTS["ghost"])
+        self.assertIn("5 words", mc.SYSTEM_PROMPTS["caveman"])
+        self.assertIn("15 words", mc.SYSTEM_PROMPTS["terse"])
 
 
 class TestSummarize(unittest.TestCase):
@@ -140,16 +156,20 @@ class TestSummarize(unittest.TestCase):
             {"mode": "normal",  "class": "RESEARCH", "output_tokens": 1000, "cost_usd": 0.015},
             {"mode": "terse",   "class": "RESEARCH", "output_tokens": 500,  "cost_usd": 0.0075},
             {"mode": "caveman", "class": "RESEARCH", "output_tokens": 200,  "cost_usd": 0.003},
+            {"mode": "tight",   "class": "RESEARCH", "output_tokens": 800,  "cost_usd": 0.012},
+            {"mode": "ghost",   "class": "RESEARCH", "output_tokens": 50,   "cost_usd": 0.0008},
         ]
         buf = io.StringIO()
         with redirect_stdout(buf):
             mc.summarize(results)
         out = buf.getvalue()
-        self.assertIn("normal", out)
-        self.assertIn("terse", out)
-        self.assertIn("caveman", out)
-        self.assertIn("-50.0%", out)
-        self.assertIn("-80.0%", out)
+        for mode in ("normal", "terse", "caveman", "tight", "ghost"):
+            with self.subTest(mode=mode):
+                self.assertIn(mode, out)
+        self.assertIn("-50.0%", out)  # terse
+        self.assertIn("-80.0%", out)  # caveman
+        self.assertIn("-20.0%", out)  # tight
+        self.assertIn("-95.0%", out)  # ghost
 
 
 class TestPricing(unittest.TestCase):

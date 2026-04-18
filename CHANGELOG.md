@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.6.0 — 2026-04-18
+
+### `/vex auto`, two new manual modes, per-class budgets, cache rules, 90-call measurement
+
+- Added `/vex auto` — **the feature that actually moves the needle.** Skill picks the compression mode from the task classification using a measured best-mode table (TRIVIAL → ghost, MECHANICAL → tight, RESEARCH → terse, ARCHITECTURAL → ghost, SINGLE_FILE → terse, DEBUGGING → normal). Each class-mode match saves 28-55% vs. baseline, without the aggregate regressions that a single fixed mode produces.
+- Added `/vex tight` — conservative manual mode. Drops opening "I'll..." preamble and trailing "I've now..." summary only.
+- Added `/vex ghost` — aggressive manual mode. Tool calls plus a single `done: <what>` / `blocked: <why>` line ≤ 10 words. No prose.
+- Added per-class output budgets to `SKILL.md` Step 10: TRIVIAL ≤80, MECHANICAL ≤150, SINGLE_FILE/DEBUGGING/INFRASTRUCTURE ≤300, MULTI_FILE ≤500, REFACTOR ≤600, RESEARCH ≤1000, ARCHITECTURAL ≤1200. Soft anchors. Baseline measurement showed TRIVIAL replies averaging ~1000 tokens for a rename — the budgets pull Claude toward proportional output.
+- Added `SKILL.md` Step 11 — Cache-Friendly Operation. Rules for keeping Anthropic's 5-min prompt cache warm: don't rewrite loaded skill files mid-session, don't reorder system prompt, append don't prepend, prefer one long session over many short ones. Includes a promoted Read-before-Read hard rule (Grep → Read with offset/limit for any file > 200 lines) and a suppress-sample-file-reads rule.
+- Extended `evaluation/scripts/measure_compression.py` with `tight` and `ghost` modes.
+- Ran `measure_compression.py --backend claude-cli --runs 3` across all 5 modes × 6 prompts (90 calls, Sonnet). **Results in `evaluation/COMPRESSION_RESULTS.md` — honestly reported, including aggregate regressions of tight (+15.5%) and caveman (+9.1%) when applied blindly.** Per-class best modes all save 28-55%; that's the shippable finding and the motivation for `/vex auto`.
+- Fixed a formatting bug in the measurement summary (negative savings showed as `--9.1%` with a double dash).
+- Extended `tests/test_measure_compression.py` from 21 to 24 tests covering the new modes and their expected properties (ghost's 10-word cap, tight's preamble/summary language, mode ordering by aggressiveness).
+- Replaced `evaluation/COMPRESSION_RESULTS.md` with the 90-call, 5-mode analysis. Previous 54-call v1.5.0 result was within this measurement's noise floor; headline mean-vs-median analysis now included.
+- Updated README with the `/vex auto` recommendation, the per-class best-mode table, and a pointer to the measured data.
+
 ## v1.5.0 — 2026-04-18
 
 ### Measured compression data + test suite

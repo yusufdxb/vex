@@ -1,8 +1,8 @@
 # Vex
 
-A Claude Code skill that routes coding tasks to cheaper model tiers when full-power models aren't needed, plus two opt-in output-compression modes that cut prose token cost by ~20% on average (up to 52% on prose-heavy prompts).
+A Claude Code skill that routes coding tasks to cheaper model tiers when full-power models aren't needed, plus four opt-in output-compression modes (ghost / caveman / terse / tight), per-class output budgets, and cache-friendly operation rules — all aimed at cutting token cost without cutting correctness.
 
-[![version](https://img.shields.io/badge/version-1.5.0-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.6.0-blue)](CHANGELOG.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -17,9 +17,16 @@ It is **not** a standalone application, API, or runtime. It's a Markdown file (`
 - **Cloud** — routes between Opus, Sonnet, and Haiku
 - **Hybrid** — routes between local Ollama models and Claude
 
-**Two output-compression modes** (opt-in, session-scoped):
+**Five output-compression modes** (opt-in, session-scoped):
+- `/vex auto` — **recommended.** Skill picks the compression mode from the task classification using a measured best-per-class table. Gets the per-class wins (28-55%) without the aggregate regressions of a single fixed mode.
+- `/vex tight` — drop preamble + trailing summary only, length otherwise normal
 - `/vex terse` — full sentences, ≤15 words, no preamble
 - `/vex caveman` — 1-5 words, broken grammar, no punctuation
+- `/vex ghost` — tool calls + a single 10-word `done:` / `blocked:` status line, no prose at all
+
+**Per-class output budgets** — soft token caps per task class (TRIVIAL ≤80, DEBUGGING ≤300, ARCHITECTURAL ≤1200, etc.) so even without a compression mode active, Claude aims smaller on prompts that don't need prose.
+
+**Cache-friendly rules** — don't rewrite loaded skills mid-session, append don't prepend, prefer one long session over many short ones. See `SKILL.md` Step 11 for the full set. Anthropic's prompt cache is 90% off on input tokens with a 5-min TTL — it's the biggest input-side lever if the skill doesn't invalidate it.
 
 ---
 
@@ -106,25 +113,37 @@ Task → Classify → Impact analysis → Risk score → Context estimate → Ro
 
 ## Output compression modes
 
-Routing cuts input cost. Output tokens also cost money. Vex ships two opt-in modes that compress Claude's prose without touching real work (code, commits, tool calls stay normal):
+Routing cuts input cost. Output tokens also cost money. Vex ships five opt-in modes:
 
 | Command | Style | Example reply |
 |---|---|---|
+| `/vex auto` | Skill picks per task class (measured best-mode table) | — |
+| `/vex tight` | Normal length, drop preamble + trailing summary only | `Config read. Patched route.py:42. Tests pass.` |
 | `/vex terse` | Full sentences, ≤15 words, no preamble or markdown | `Reading config. Patching route. Running tests.` |
 | `/vex caveman` | 1-5 words, broken grammar, no punctuation | `file read edit next` |
+| `/vex ghost` | ≤10 words total, `done:` / `blocked:` format | `done: tier added, 12/12 tests pass` |
 | `/vex normal` | Revert to default output style | — |
 
-### Measured savings (Sonnet, n=3 per combo)
+### Measured savings (Sonnet, 90 calls, n=3 per cell)
 
-| Mode    | Avg output tokens | vs normal |
-|---------|-------------------|-----------|
-| normal  | 845               | —         |
-| terse   | 684               | **-19%**  |
-| caveman | 666               | **-21%**  |
+Aggregate compression is unreliable — only `terse` saves anything (-6%); `tight` and `caveman` actively cost more tokens than normal when applied blindly. **But every class has a winning mode with 28-55% savings.** That's why `/vex auto` is the recommended default — it matches the mode to the classification:
 
-Per-class results are uneven — modes save 30-50% on prose-heavy prompts (debugging, research, trivial) and can cost 10-20% more on structured-output prompts (single-file code, architectural with tradeoffs). Use them when you're producing prose, skip them when you're producing code blocks. Full data and caveats in [`evaluation/COMPRESSION_RESULTS.md`](evaluation/COMPRESSION_RESULTS.md).
+| Class          | Best mode | Saves vs normal |
+|----------------|-----------|----------------:|
+| TRIVIAL        | `ghost`   | **-55%**        |
+| MECHANICAL     | `tight`   | **-47%**        |
+| RESEARCH       | `terse`   | **-40%**        |
+| ARCHITECTURAL  | `ghost`   | **-33%**        |
+| SINGLE_FILE    | `terse`   | **-28%**        |
+| DEBUGGING      | none      | -5% (all modes except terse rebelled) |
 
-Modes are session-scoped. See `SKILL.md` Step 10 for the full spec.
+Full data, caveats, variance analysis, and the 90-call raw log: [`evaluation/COMPRESSION_RESULTS.md`](evaluation/COMPRESSION_RESULTS.md).
+
+### Per-class output budgets
+
+Even without a compression mode active, each task class has a soft output-token budget. TRIVIAL ≤80, MECHANICAL ≤150, SINGLE_FILE ≤300, DEBUGGING ≤300, RESEARCH ≤1000, ARCHITECTURAL ≤1200. Measurement showed normal-mode replies routinely exceed these (a rename produced ~1000 output tokens in the baseline); the budgets anchor Claude to stop padding.
+
+Modes are session-scoped. See `SKILL.md` Step 10 for the full spec and Step 11 for cache-friendly operation rules.
 
 ---
 

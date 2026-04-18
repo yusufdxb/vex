@@ -388,7 +388,22 @@ for model in ['haiku','sonnet','ollama:small','ollama:medium','ollama:large']:
 
 ## Step 10 — Output Compression Modes
 
-Output tokens are as real as input tokens. Two opt-in modes compress Claude's own prose output when the user doesn't need long-form explanation. Both are session-scoped toggles, activated via `/vex`.
+Output tokens are as real as input tokens. Four opt-in modes compress Claude's own prose output when the user doesn't need long-form explanation. All are session-scoped toggles, activated via `/vex`.
+
+### Tight mode (recommended default)
+
+Activated by `/vex tight`. Deactivated by `/vex tight off` or `/vex normal`.
+
+The most conservative mode — only cuts preamble and trailing summary. Length and structure are otherwise normal.
+
+While active, every Claude text response must:
+- Skip opening sentences about what you are about to do (`I'll...`, `Let me...`, `Sure,...`, `Here is...`)
+- Skip closing sentences summarizing what you just did
+- If the reply is a code block, output only the code block with no prose wrapping unless explanation was requested
+
+Example:
+- Off: "I'll read the config file, then patch the routing table, then run the tests. ...I've now read the config, patched the routing table, and run the tests."
+- On:  "Config read. Patched `route.py:42` for the new tier. Tests pass."
 
 ### Terse mode
 
@@ -417,6 +432,62 @@ Example:
 - Off: "I've finished reading the file and I'm about to edit it."
 - On:  "file read edit next"
 
+### Ghost mode (maximum compression)
+
+Activated by `/vex ghost`. Deactivated by `/vex ghost off` or `/vex normal`.
+
+The most aggressive mode. For pure-execution tasks where the user does not need narration — the tool calls and file diffs already tell the story.
+
+While active, every Claude text response must:
+- Be at most 10 words of prose, in the form `done: <what>` or `blocked: <why>`
+- Never narrate what was done or will be done — the tool calls and file writes are self-evident
+- Never echo code that was written to a file
+- If a code block is the natural reply, output only the code block with zero prose
+
+Example:
+- Off: "I've read the config, patched the routing table in config.py (added the new tier between sonnet and haiku), and run the tests — all 12 pass. Let me know if you'd like me to..."
+- On:  `done: new tier added, 12/12 tests pass`
+
+### Auto mode (recommended)
+
+Activated by `/vex auto`. Deactivated by `/vex auto off` or `/vex normal`.
+
+Measurement (n=3 per combo on Sonnet, see `evaluation/COMPRESSION_RESULTS.md`) shows no single compression mode wins across all task classes. Each class has a different best mode; picking one mode globally either leaves savings on the table or actively costs tokens. `/vex auto` solves this by picking the mode from the classification step:
+
+| Task class      | Auto-selected mode | Measured saving vs normal |
+|-----------------|-------------------|--------------------------|
+| `TRIVIAL`       | `ghost`           | -55%                     |
+| `MECHANICAL`    | `tight`           | -47%                     |
+| `RESEARCH`      | `terse`           | -40%                     |
+| `ARCHITECTURAL` | `ghost`           | -33%                     |
+| `SINGLE_FILE`   | `terse`           | -28%                     |
+| `DEBUGGING`     | `normal` (no mode) | (all modes rebelled)    |
+| `MULTI_FILE`    | `tight` (default) | no data — inferred       |
+| `REFACTOR`      | `tight` (default) | no data — inferred       |
+| `INFRASTRUCTURE`| `tight` (default) | no data — inferred       |
+
+The auto mapping is loaded from the measurement table above. When `/vex auto` is active, the classification from Step 1 selects the compression mode for that reply only. If the classification changes mid-session (e.g., TRIVIAL fix becomes a SINGLE_FILE debugging trace), the auto mapping re-selects.
+
+Manual overrides (`/vex terse`, `/vex tight`, etc.) take precedence over auto for the rest of the session. `/vex auto` can be re-enabled with another `/vex auto` call.
+
+### Per-class output budgets
+
+Independent of the above modes, each task class has a soft output-token budget that Claude should aim for. These are anchors, not hard caps — exceed them only when the task legitimately needs more prose.
+
+| Class | Prose budget (tokens) | Rationale |
+|---|---|---|
+| `TRIVIAL` | 80 | A rename or comment addition needs no explanation |
+| `MECHANICAL` | 150 | Docstrings/formatting are self-evident |
+| `SINGLE_FILE` | 300 | One-file fix with brief cause + fix |
+| `MULTI_FILE` | 500 | Brief per-file rationale |
+| `REFACTOR` | 600 | Reason for structure + before/after |
+| `ARCHITECTURAL` | 1200 | Trade-off discussion legitimately needs space |
+| `DEBUGGING` | 300 | Cause, fix, verify — three lines |
+| `RESEARCH` | 1000 | Explanation is the deliverable |
+| `INFRASTRUCTURE` | 300 | Config is code; minimal prose |
+
+Measurement shows normal-mode replies consistently exceed these budgets (e.g., `TRIVIAL` averages ~1000 tokens for a simple rename). Aiming for the budget recovers most of the savings that compression modes provide, without the structured-output regressions.
+
 ### What the modes do NOT change
 
 These modes compress **prose output only**. They must not degrade the actual work:
@@ -428,11 +499,45 @@ These modes compress **prose output only**. They must not degrade the actual wor
 
 ### Precedence
 
-If both are somehow requested, **caveman wins**. Only one mode is active at a time. Modes do not persist across sessions — each new session starts with both off.
+Manual modes take precedence over `/vex auto`. If multiple manual modes are somehow requested, the more aggressive wins: **ghost > caveman > terse > tight**. Only one mode is active at a time. Modes do not persist across sessions — each new session starts with all off.
 
 ### Interaction with routing
 
-These modes stack with Step 7 token optimization. They are orthogonal to routing: Haiku, Sonnet, and Opus all obey them. When a lower-tier subagent is spawned, pass the active mode forward in its system prompt so its output stays compressed too.
+These modes stack with Step 7 token optimization and Step 11 cache-friendly operation. They are orthogonal to routing: Haiku, Sonnet, and Opus all obey them. When a lower-tier subagent is spawned, pass the active mode forward in its system prompt so its output stays compressed too.
+
+---
+
+## Step 11 — Cache-Friendly Operation
+
+The Anthropic API prompt cache gives a ~90% input-token discount on cached reads with a 5-minute TTL. On long Claude Code sessions this is the single biggest input-side lever and is invisible to the user if the skill plays along.
+
+### Rules for preserving cache hits
+
+1. **Do not rewrite CLAUDE.md, SKILL.md, or any loaded-skill file mid-session.** Any edit invalidates every prefix-cached message after it. If a change is needed, batch it at session end.
+2. **Do not reorder the system prompt or skill list between turns.** Prefix cache hits require byte-identical prefixes. Adding or removing a skill mid-session breaks the cache.
+3. **Append, don't prepend.** Add new context to the end of messages, not the top. Prepending rewrites everything downstream.
+4. **Prefer a single long-lived session over many short ones** when cache warmth matters. A 5-minute gap between turns drops the cache; under 5 minutes it holds.
+5. **For repeated file reads, read once and reference.** Re-reading the same file flushes no cache but pays the full input cost every time. If you've already read `foo.py:42-80`, cite it by path+lines instead of reading again.
+
+### When cache is NOT worth preserving
+
+- First read of a file you will edit — the edit invalidates cache downstream anyway.
+- Exploration sessions where the next prompt is unpredictable.
+- Sessions that span > 5 minutes of user idle time.
+
+### Output-side interaction
+
+Prompt caching only discounts **input** tokens. Output tokens still cost full rate, which is why the Step 10 compression modes and per-class output budgets are separate levers. Use both together for compounded savings.
+
+### Read-before-Read rule
+
+Every `Read` call on a file > 200 lines is ~1K+ input tokens. Before reading a large file:
+
+1. `Grep` for the symbol or keyword to find the relevant line range.
+2. `Read` with `offset` and `limit` covering only that range plus a few lines of context.
+3. Only read the whole file when the whole file is genuinely needed (small configs, policy docs, one-screen modules).
+
+This rule also applies to sample/example files. Never read `examples/**`, `evaluation/examples/**`, or any file clearly labeled as sample data unless the user explicitly asked about the examples.
 
 ---
 
@@ -443,10 +548,16 @@ These modes stack with Step 7 token optimization. They are orthogonal to routing
 | Command | Effect |
 |---|---|
 | `/vex` | Emit a routing audit for the current task (see format below) |
-| `/vex terse` | Enable terse output mode (Step 10) |
+| `/vex auto` | Enable auto mode — skill picks compression per task class (Step 10) |
+| `/vex auto off` | Disable auto mode |
+| `/vex tight` | Enable tight mode — drop preamble + trailing summary (Step 10) |
+| `/vex tight off` | Disable tight mode |
+| `/vex terse` | Enable terse mode — ≤15 words per reply (Step 10) |
 | `/vex terse off` | Disable terse mode |
-| `/vex caveman` | Enable caveman output mode (Step 10) |
+| `/vex caveman` | Enable caveman mode — 1-5 words, broken grammar (Step 10) |
 | `/vex caveman off` | Disable caveman mode |
+| `/vex ghost` | Enable ghost mode — tool calls + 10-word status only (Step 10) |
+| `/vex ghost off` | Disable ghost mode |
 | `/vex normal` | Disable all compression modes |
 
 When a mode toggle is invoked, acknowledge the switch in the new mode's style (e.g., `/vex caveman` → reply `caveman on`) and apply it to every subsequent reply in the session.

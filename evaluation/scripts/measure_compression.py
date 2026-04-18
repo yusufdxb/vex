@@ -50,6 +50,22 @@ SYSTEM_PROMPTS = {
         "Broken grammar. No articles. No punctuation. Drop pronouns and "
         "auxiliary verbs. Never exceed 5 words."
     ),
+    "tight": (
+        "Output constraint: no opening sentence about what you are about to "
+        "do ('I'll...', 'Let me...', 'Sure...'). No closing sentence summarizing "
+        "what you did. No 'Here is...' preambles. Full sentences and normal "
+        "length are fine — just cut preamble and trailing summary. If the "
+        "answer is a code block, output only the code block with no prose "
+        "wrapping it unless the user asked for explanation."
+    ),
+    "ghost": (
+        "Output constraint: reply with at most 10 words total, in the form "
+        "'done: <what>' or 'blocked: <why>' or a direct minimal answer. "
+        "Never narrate what you did or will do. Never echo code that was "
+        "written to a file. If the reply would be a code block, output "
+        "only the code block with zero prose around it. Anything beyond 10 "
+        "words of prose violates the constraint."
+    ),
 }
 
 # Per-1M-token pricing. Author estimate — verify against
@@ -218,7 +234,7 @@ def summarize(results):
     print("=" * 78)
     print(f"{'Mode':<10} {'N':<4} {'Avg out':<9} {'Total out':<11} {'Total cost':<12} {'vs normal':<10}")
     print("-" * 78)
-    for mode in ["normal", "terse", "caveman"]:
+    for mode in ["normal", "terse", "caveman", "tight", "ghost"]:
         rs = by_mode.get(mode, [])
         if not rs:
             continue
@@ -229,7 +245,9 @@ def summarize(results):
         if mode == "normal" or normal_total_out == 0:
             savings = "—"
         else:
-            savings = f"-{(1 - total_out / normal_total_out) * 100:.1f}%"
+            pct = (1 - total_out / normal_total_out) * 100
+            sign = "-" if pct >= 0 else "+"
+            savings = f"{sign}{abs(pct):.1f}%"
         cost_str = f"${total_cost:.4f}" if total_cost else "?"
         print(f"{mode:<10} {n:<4} {avg_out:<9.1f} {total_out:<11} {cost_str:<12} {savings:<10}")
     print("=" * 78)
@@ -240,11 +258,11 @@ def summarize(results):
 
     print("\nAvg output tokens by class x mode")
     print("-" * 78)
-    header = f"{'Class':<18}" + "".join(f"{m:<12}" for m in ["normal", "terse", "caveman"])
+    header = f"{'Class':<18}" + "".join(f"{m:<12}" for m in ["normal", "terse", "caveman", "tight", "ghost"])
     print(header)
     for cls in sorted(by_class):
         row_vals = []
-        for mode in ["normal", "terse", "caveman"]:
+        for mode in ["normal", "terse", "caveman", "tight", "ghost"]:
             xs = by_class[cls].get(mode, [])
             row_vals.append(f"{sum(xs)/len(xs):.0f}" if xs else "—")
         print(f"{cls:<18}" + "".join(f"{v:<12}" for v in row_vals))
@@ -264,7 +282,7 @@ def main():
                         help="Anthropic model ID (default: %(default)s)")
     parser.add_argument("--runs", type=int, default=1,
                         help="Repetitions per (prompt, mode) combo (default: %(default)s)")
-    parser.add_argument("--modes", default="normal,terse,caveman",
+    parser.add_argument("--modes", default="normal,terse,caveman,tight,ghost",
                         help="Comma-separated modes to run (default: %(default)s)")
     parser.add_argument("--out", default="evaluation/data/compression_results.jsonl",
                         help="Output JSONL path (default: %(default)s, gitignored)")

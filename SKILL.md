@@ -386,7 +386,72 @@ for model in ['haiku','sonnet','ollama:small','ollama:medium','ollama:large']:
 
 ---
 
+## Step 10 — Output Compression Modes
+
+Output tokens are as real as input tokens. Two opt-in modes compress Claude's own prose output when the user doesn't need long-form explanation. Both are session-scoped toggles, activated via `/vex`.
+
+### Terse mode
+
+Activated by `/vex terse`. Deactivated by `/vex terse off` or `/vex normal`.
+
+While active, every Claude text response must:
+- Fit in 15 words or fewer per reply
+- Use full sentences but cut all preamble, throat-clearing, and recap
+- Omit markdown headers, bullet lists, code fences around prose, and trailing summaries
+- State only the result, the next action, or the blocker
+
+Example:
+- Off: "I'll read the config file first, then patch the routing table, then run the tests to confirm."
+- On:  "Reading config. Patching route. Running tests."
+
+### Caveman mode
+
+Activated by `/vex caveman`. Deactivated by `/vex caveman off` or `/vex normal`.
+
+While active, every Claude text response must:
+- Be 1 to 5 words total
+- Use broken grammar, no articles, no punctuation
+- Drop pronouns and auxiliary verbs
+
+Example:
+- Off: "I've finished reading the file and I'm about to edit it."
+- On:  "file read edit next"
+
+### What the modes do NOT change
+
+These modes compress **prose output only**. They must not degrade the actual work:
+- Code written into files stays idiomatic and complete
+- Commit messages, PR titles, and PR bodies stay professional
+- Tool call arguments (grep patterns, bash commands, file paths) are unaffected
+- Error messages surfaced from tools are passed through verbatim
+- When the user explicitly asks for a full explanation, the mode is paused for that single reply
+
+### Precedence
+
+If both are somehow requested, **caveman wins**. Only one mode is active at a time. Modes do not persist across sessions — each new session starts with both off.
+
+### Interaction with routing
+
+These modes stack with Step 7 token optimization. They are orthogonal to routing: Haiku, Sonnet, and Opus all obey them. When a lower-tier subagent is spawned, pass the active mode forward in its system prompt so its output stays compressed too.
+
+---
+
 ## When Invoked as `/vex`
+
+### Subcommands
+
+| Command | Effect |
+|---|---|
+| `/vex` | Emit a routing audit for the current task (see format below) |
+| `/vex terse` | Enable terse output mode (Step 10) |
+| `/vex terse off` | Disable terse mode |
+| `/vex caveman` | Enable caveman output mode (Step 10) |
+| `/vex caveman off` | Disable caveman mode |
+| `/vex normal` | Disable all compression modes |
+
+When a mode toggle is invoked, acknowledge the switch in the new mode's style (e.g., `/vex caveman` → reply `caveman on`) and apply it to every subsequent reply in the session.
+
+### Routing audit format
 
 Output a routing audit for the current task:
 

@@ -101,6 +101,20 @@ Once installed, the skill prompt is available to Claude Code on every task. Whet
 
 ---
 
+## Output compression modes
+
+Routing cuts input cost. Output tokens also cost money. Vex ships two opt-in modes that compress Claude's prose output without touching the actual work (code, commits, tool calls stay normal):
+
+| Command | Style | Example reply |
+|---|---|---|
+| `/vex terse` | Full sentences, <=15 words, no preamble or markdown | `Reading config. Patching route. Running tests.` |
+| `/vex caveman` | 1-5 words, broken grammar, no punctuation | `file read edit next` |
+| `/vex normal` | Revert to default output style | — |
+
+Modes are session-scoped. See `SKILL.md` Step 10 for the full spec.
+
+---
+
 ## `/vex` — inspect routing decisions
 
 Run `/vex` in Claude Code to see how a task would be routed:

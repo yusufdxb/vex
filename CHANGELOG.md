@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.0 — 2026-04-17
+
+### Output compression modes
+
+- Added Step 10 to `SKILL.md`: session-scoped output compression modes to reduce output token cost
+- `/vex terse`: full sentences capped at 15 words per reply, no preamble, no markdown headers, no trailing summaries
+- `/vex caveman`: 1-5 word replies, broken grammar, no punctuation
+- `/vex normal`: reverts to default output style
+- Modes compress prose only — code, commit messages, PR bodies, and tool call arguments are unaffected
+- Caveman takes precedence if both are somehow active; modes do not persist across sessions
+- Added subcommand table to the `/vex` invocation section and a feature summary to `README.md`
+
 ## v1.3.0 — 2026-04-02
 
 ### Evaluation framework

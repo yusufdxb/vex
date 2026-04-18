@@ -77,7 +77,32 @@ evaluation/
 - Escalation rate and escalation success rate
 - Routing agreement with manual model selection
 
-### 4. Escalation effectiveness
+### 4. Output compression savings
+
+**Question:** How much output-token cost do the `/vex terse` and `/vex caveman` modes (Step 10) actually save?
+
+**Method:**
+- Run `evaluation/scripts/measure_compression.py`, which feeds each prompt in `evaluation/compression_prompts.jsonl` through the Anthropic API in normal, terse, and caveman modes
+- The script simulates each mode via a system-prompt instruction and records input/output tokens per call
+- Results are written to `evaluation/data/compression_results.jsonl` (gitignored) with a summary table printed to stdout
+
+**Metrics:**
+- Average and total output tokens per mode
+- Estimated total cost per mode (using the pricing table inside the script — verify against current Anthropic pricing before quoting)
+- Savings percentage vs. normal, overall and per task class
+
+**Caveats:**
+- Measures prompt-simulated compliance via the API, NOT whether Claude Code reliably honors the slash commands in a real session. A separate in-session audit is needed for that.
+- Output-token savings only. Tool-call arguments, file writes via Edit/Write, and code produced by the skill are unaffected.
+- Variance is high for small prompt sets. Use `--runs N` with N >= 3 before reporting a number.
+
+**Usage:**
+```
+export ANTHROPIC_API_KEY=...
+python3 evaluation/scripts/measure_compression.py --runs 3
+```
+
+### 5. Escalation effectiveness
 
 **Question:** When a lower tier fails and escalates, does the next tier recover?
 

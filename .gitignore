@@ -5,6 +5,7 @@ references/routing_log.jsonl
 evaluation/data/eval_log.jsonl
 evaluation/data/environment.md
 evaluation/data/weekly_notes.md
+evaluation/data/compression_results.jsonl
 
 # OS files
 .DS_Store

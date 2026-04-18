@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.1 — 2026-04-17
+
+### Compression-mode measurement script
+
+- Added `evaluation/scripts/measure_compression.py` — feeds a fixed prompt set through the Anthropic Messages API in normal, terse, and caveman modes and reports per-mode output tokens, estimated cost, and savings vs. normal (overall and per task class)
+- Stdlib-only (no third-party packages); requires `ANTHROPIC_API_KEY`
+- Added `evaluation/compression_prompts.jsonl` with 6 prompts spanning TRIVIAL, MECHANICAL, SINGLE_FILE, DEBUGGING, RESEARCH, ARCHITECTURAL classes
+- Added "Output compression savings" section to `EVALUATION.md` describing methodology, metrics, caveats
+- `evaluation/data/compression_results.jsonl` added to `.gitignore` — no measured results ship with the repo
+- Methodology caveat: the script simulates compression via system-prompt injection. It measures whether the rule reduces tokens when the model is instructed to follow it, NOT whether the `/vex terse` or `/vex caveman` slash commands are reliably honored in a real Claude Code session — that requires separate in-session testing
+
 ## v1.4.0 — 2026-04-17
 
 ### Output compression modes

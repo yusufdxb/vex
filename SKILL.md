@@ -15,7 +15,7 @@ Choose your routing mode and configure it below.
 ```
 ROUTING_MODE:  cloud
 TIER_1:        claude-haiku-4-5    # fast, cheap — trivial/mechanical tasks
-TIER_2:        claude-sonnet-4-5   # balanced — single/multi-file, debugging
+TIER_2:        claude-sonnet-4-6   # balanced — single/multi-file, debugging
 TIER_3:        claude-opus-4-7     # full power — architecture, refactors, research
 ```
 
@@ -27,7 +27,7 @@ OLLAMA_SMALL:    <your small model, e.g. llama3.2, qwen2.5:7b>
 OLLAMA_MEDIUM:   <your medium model, e.g. qwen2.5:14b, mistral>
 OLLAMA_LARGE:    <your large model, e.g. qwen2.5:32b, deepseek-coder-v2:16b>
 OLLAMA_ENDPOINT: http://localhost:11434
-CLOUD_MODEL:     claude-sonnet-4-5  (fallback/escalation target)
+CLOUD_MODEL:     claude-sonnet-4-6  (fallback/escalation target)
 ```
 
 Throughout this skill, `tier:1`, `tier:2`, `tier:3` refer to your configured models — either Haiku/Sonnet/Opus or Ollama small/medium/large.
@@ -601,7 +601,7 @@ Recommended execution plan:
 | Tier | Model | Best for | Relative cost |
 |---|---|---|---|
 | `tier:1` | Claude Haiku 4.5 | Trivial, mechanical, boilerplate | $$ |
-| `tier:2` | Claude Sonnet 4.5 | Single/multi-file, debugging, features | $$$ |
+| `tier:2` | Claude Sonnet 4.6 | Single/multi-file, debugging, features | $$$ |
 | `tier:3` | Claude Opus 4.7 | Architecture, refactors, research, verification | $$$$ |
 
 ### Hybrid Mode Models (Ollama)

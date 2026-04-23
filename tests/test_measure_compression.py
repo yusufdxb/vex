@@ -75,7 +75,7 @@ class TestLoadPrompts(unittest.TestCase):
 
 class TestEstimateCost(unittest.TestCase):
     def test_known_model_returns_positive_cost(self):
-        cost = mc.estimate_cost("claude-sonnet-4-5", 1_000_000, 1_000_000)
+        cost = mc.estimate_cost("claude-sonnet-4-6", 1_000_000, 1_000_000)
         self.assertAlmostEqual(cost, 18.0, places=4)
 
     def test_haiku_cheaper_than_opus(self):
@@ -87,7 +87,7 @@ class TestEstimateCost(unittest.TestCase):
         self.assertIsNone(mc.estimate_cost("not-a-real-model", 100, 100))
 
     def test_zero_tokens_zero_cost(self):
-        self.assertEqual(mc.estimate_cost("claude-sonnet-4-5", 0, 0), 0.0)
+        self.assertEqual(mc.estimate_cost("claude-sonnet-4-6", 0, 0), 0.0)
 
 
 class TestExtractText(unittest.TestCase):
@@ -175,12 +175,12 @@ class TestSummarize(unittest.TestCase):
 class TestPricing(unittest.TestCase):
     def test_all_three_tiers_priced(self):
         self.assertIn("claude-haiku-4-5", mc.PRICING)
-        self.assertIn("claude-sonnet-4-5", mc.PRICING)
+        self.assertIn("claude-sonnet-4-6", mc.PRICING)
         self.assertIn("claude-opus-4-7", mc.PRICING)
 
     def test_pricing_ordering_haiku_sonnet_opus(self):
         h = mc.PRICING["claude-haiku-4-5"]
-        s = mc.PRICING["claude-sonnet-4-5"]
+        s = mc.PRICING["claude-sonnet-4-6"]
         o = mc.PRICING["claude-opus-4-7"]
         self.assertLess(h["input"], s["input"])
         self.assertLess(s["input"], o["input"])

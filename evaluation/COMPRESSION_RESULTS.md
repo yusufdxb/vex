@@ -1,6 +1,6 @@
 # Compression-mode measurement
 
-**Measured 2026-04-18.** 90 calls — 6 prompts × 5 modes (normal, terse, caveman, tight, ghost) × 3 runs — against `claude-sonnet-4-5` via `claude -p --output-format json --tools "" --no-session-persistence`, with the mode rule injected via `--append-system-prompt`. Raw data in `evaluation/data/compression_results.jsonl` (gitignored).
+**Measured 2026-04-18.** 90 calls — 6 prompts × 5 modes (normal, terse, caveman, tight, ghost) × 3 runs — against `claude-sonnet-4-6` via `claude -p --output-format json --tools "" --no-session-persistence`, with the mode rule injected via `--append-system-prompt`. Raw data in `evaluation/data/compression_results.jsonl` (gitignored).
 
 Reproduce:
 

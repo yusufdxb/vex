@@ -20,7 +20,7 @@ Requirements:
 
 Usage:
   python3 evaluation/scripts/measure_compression.py
-  python3 evaluation/scripts/measure_compression.py --model claude-sonnet-4-5 --runs 3
+  python3 evaluation/scripts/measure_compression.py --model claude-sonnet-4-6 --runs 3
   python3 evaluation/scripts/measure_compression.py --prompts my_prompts.jsonl --out my_results.jsonl
 """
 
@@ -72,7 +72,7 @@ SYSTEM_PROMPTS = {
 # https://www.anthropic.com/pricing before trusting reported cost.
 PRICING = {
     "claude-haiku-4-5":  {"input": 0.80, "output": 4.00},
-    "claude-sonnet-4-5": {"input": 3.00, "output": 15.00},
+    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
     "claude-opus-4-7":   {"input": 15.00, "output": 75.00},
 }
 
@@ -278,7 +278,7 @@ def main():
     )
     parser.add_argument("--prompts", default="evaluation/compression_prompts.jsonl",
                         help="JSONL file of prompts (default: %(default)s)")
-    parser.add_argument("--model", default="claude-sonnet-4-5",
+    parser.add_argument("--model", default="claude-sonnet-4-6",
                         help="Anthropic model ID (default: %(default)s)")
     parser.add_argument("--runs", type=int, default=1,
                         help="Repetitions per (prompt, mode) combo (default: %(default)s)")

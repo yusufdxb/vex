@@ -43,7 +43,7 @@ Edit the config block at the top of `SKILL.md`:
 ```
 ROUTING_MODE:  cloud
 TIER_1:        claude-haiku-4-5
-TIER_2:        claude-sonnet-4-5
+TIER_2:        claude-sonnet-4-6
 TIER_3:        claude-opus-4-7
 ```
 
@@ -54,7 +54,7 @@ OLLAMA_SMALL:    qwen2.5-coder:7b
 OLLAMA_MEDIUM:   qwen2.5-coder:14b
 OLLAMA_LARGE:    deepseek-coder-v2:16b
 OLLAMA_ENDPOINT: http://localhost:11434
-CLOUD_MODEL:     claude-sonnet-4-5
+CLOUD_MODEL:     claude-sonnet-4-6
 ```
 
 Once installed, the skill prompt is available to Claude Code on every task.

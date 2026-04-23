@@ -6,7 +6,7 @@
 **Date frozen:** 2026-04-03
 **Evaluator:** Yusuf Guenena
 **Routing mode:** cloud
-**Model versions:** Haiku 4.5, Sonnet 4.5 (claude-sonnet-4-5), Opus 4.7 (claude-opus-4-7)
+**Model versions:** Haiku 4.5, Sonnet 4.6 (claude-sonnet-4-6), Opus 4.7 (claude-opus-4-7)
 
 ## Frozen routing thresholds
 

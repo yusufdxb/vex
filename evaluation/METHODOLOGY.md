@@ -91,7 +91,7 @@ Minimum 2 weeks of regular usage. Single-day evaluations are not credible becaus
 | Model | Input (per 1M tokens) | Output (per 1M tokens) |
 |---|---|---|
 | Haiku 4.5 | $0.80 | $4.00 |
-| Sonnet 4.5 | $3.00 | $15.00 |
+| Sonnet 4.6 | $3.00 | $15.00 |
 | Opus 4.7 | $15.00 | $75.00 |
 
 Update these when prices change. The analysis script reads them from a config section.

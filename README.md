@@ -234,7 +234,7 @@ vex/
 - Routing saves an estimated **44% vs. Opus-only** and **6.1% vs. manual model selection**
 - Quality: 4.85/5 mean, 100% pass rate, 5% rework rate
 - SINGLE_FILE/LOW was over-routed to Haiku (16 downgrades) — routing table updated to route SINGLE_FILE/LOW to Sonnet
-- Escalation effectiveness and hybrid-mode offload rate remain unmeasured (no real routing data yet)
+- Measured tier success rates: Haiku/Sonnet/Opus all 100% on 15 coding prompts (45 calls); Ollama small/medium/large also 100% (60 calls) — prompts too easy to differentiate, but Haiku is **13x cheaper** than Opus for identical results
 
 A quick-log script (`evaluation/scripts/quick_log.sh`, 5 prompts) is available for ongoing data collection. See `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow.
 

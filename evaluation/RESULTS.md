@@ -107,6 +107,57 @@ Vex routes 14 more tasks to Haiku and 14 fewer to Sonnet than the evaluator woul
 - **14 of 16** are SINGLE_FILE/LOW routed to Haiku instead of Sonnet. These include implementing ROS nodes, writing test suites, and creating protocol stubs — tasks where Haiku's literal execution style may produce incorrect output.
 - **2 of 16** are SINGLE_FILE/MEDIUM routed to Sonnet instead of Opus. Both involve wiring ROS nodes with external services (LLM, hardware) where the evaluator wanted Opus for correctness.
 
+## Measured tier success rates (45 cloud + 60 hybrid calls)
+
+Measured 2026-04-23 using `evaluation/scripts/measure_routing.py` — 15 coding prompts spanning all 9 task classes, sent to each tier via `claude -p` (cloud) and `ollama run` (hybrid).
+
+### Cloud mode (15 prompts × 3 tiers = 45 calls)
+
+| Tier | Success rate | Cost (15 prompts) |
+|---|---|---|
+| Haiku 4.5 | 15/15 (100%) | $0.065 |
+| Sonnet 4.6 | 15/15 (100%) | $0.146 |
+| Opus 4.7 | 15/15 (100%) | $0.836 |
+
+Haiku is **13x cheaper** than Opus for identical results on these prompts.
+
+### Hybrid mode (15 prompts × 4 tiers = 60 calls)
+
+| Tier | Model | Success rate | Cost |
+|---|---|---|---|
+| ollama:small | qwen2.5-coder:latest (7b) | 15/15 (100%) | $0 (local) |
+| ollama:medium | qwen2.5-coder:14b | 15/15 (100%) | $0 (local) |
+| ollama:large | deepseek-coder-v2:16b | 15/15 (100%) | $0 (local) |
+| Haiku (baseline) | claude-haiku-4-5 | 15/15 (100%) | $0.076 |
+
+All three Ollama models match Haiku on these prompts at zero API cost.
+
+### Per-class success (cloud tiers)
+
+| Class | Haiku | Sonnet | Opus |
+|---|---|---|---|
+| TRIVIAL | 2/2 (100%) | 2/2 (100%) | 2/2 (100%) |
+| MECHANICAL | 2/2 (100%) | 2/2 (100%) | 2/2 (100%) |
+| SINGLE_FILE | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| DEBUGGING | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| MULTI_FILE | 1/1 (100%) | 1/1 (100%) | 1/1 (100%) |
+| REFACTOR | 1/1 (100%) | 1/1 (100%) | 1/1 (100%) |
+| RESEARCH | 1/1 (100%) | 1/1 (100%) | 1/1 (100%) |
+| ARCHITECTURAL | 1/1 (100%) | 1/1 (100%) | 1/1 (100%) |
+| INFRASTRUCTURE | 1/1 (100%) | 1/1 (100%) | 1/1 (100%) |
+
+### Simulated escalation
+
+| Metric | Value |
+|---|---|
+| Direct success (first tier) | 15/15 (100%) |
+| Escalation needed | 0/15 (0%) |
+| All tiers failed | 0/15 (0%) |
+
+### Caveat
+
+These prompts are self-contained, short-context coding tasks. All models handled them successfully, which means the prompts are **too easy to differentiate tiers**. Real routing failures occur on ambiguous, multi-step, context-heavy tasks that require tool use and cross-file reasoning — those cannot be simulated with `claude -p` (no tool access). The cost data (13x cheaper for identical results) is the stronger finding. Success rate differentiation requires real in-session routing data.
+
 ## Where routing helped
 
 - **TRIVIAL tasks** (7 tasks, 89% savings): Haiku handles renames, one-line fixes, and doc updates trivially. No quality risk.
@@ -132,15 +183,19 @@ Vex routes 14 more tasks to Haiku and 14 fewer to Sonnet than the evaluator woul
 
 ## Recommendations
 
-1. **Change SINGLE_FILE/LOW from Haiku to Sonnet** in the cloud routing table. The current threshold is too aggressive — Haiku handles TRIVIAL and MECHANICAL well but SINGLE_FILE tasks involve enough design judgment that Sonnet is the safe floor. This reduces estimated savings from 44% to ~38% but eliminates the largest quality risk.
+1. **SINGLE_FILE/LOW now routes to Sonnet** (changed in this evaluation). The previous Haiku routing was the largest quality risk. This reduces estimated savings from 44% to ~38% but eliminates 14 downgrade cases.
 
-2. **Collect real routing data.** This evaluation is entirely reconstructed. The next step is to activate Vex routing on real tasks and log actual outcomes with the quick-log script. Only real Haiku/Sonnet task outcomes can validate or falsify the routing table.
+2. **Hybrid mode is viable for TRIVIAL and MECHANICAL tasks.** All three Ollama models (7b, 14b, 16b) scored 100% on these classes at zero API cost. For users with a local GPU, offloading TRIVIAL/MECHANICAL to `ollama:small` is a free win.
 
-3. **Test Haiku on MECHANICAL more aggressively.** All 5 MECHANICAL tasks scored 5/5 and the evaluator agreed Haiku could handle them. Consider whether some currently-SINGLE_FILE tasks (config files, boilerplate tests) should be reclassified as MECHANICAL.
+3. **Harder prompts needed.** The current measurement prompts are too easy — all tiers score 100%. Real tier differentiation requires multi-file, tool-using, context-heavy tasks that can only be measured through in-session routing with `quick_log.sh`.
+
+4. **Collect real routing data.** This evaluation is partly reconstructed (cost/quality from git history) and partly measured (tier success rates from `measure_routing.py`). The next step is real in-session routing with actual Haiku/Sonnet task outcomes.
 
 ## Raw data
 
 Full evaluation log: `evaluation/data/eval_log.jsonl` (gitignored — 60 entries)
+Routing measurement: `evaluation/data/routing_results.jsonl` (45 cloud calls)
+Hybrid measurement: `evaluation/data/routing_results_hybrid.jsonl` (60 hybrid calls)
 Environment: `evaluation/data/environment.md`
 
 ---

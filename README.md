@@ -225,18 +225,28 @@ vex/
 
 ---
 
-## What is and isn't measured
+## Evaluation results
 
-**Measured:**
-- Output-compression mode savings on Sonnet — `evaluation/COMPRESSION_RESULTS.md` (n=3 per combo, 54 total calls, 19-21% aggregate savings with per-class variance)
+Full details in [`evaluation/RESULTS.md`](evaluation/RESULTS.md).
 
-**Preliminary (60 tasks, reconstructed baselines — see [`evaluation/RESULTS.md`](evaluation/RESULTS.md)):**
-- Routing saves an estimated **44% vs. Opus-only** and **6.1% vs. manual model selection**
+**Routing cost savings** (60 tasks across 7 codebases, reconstructed baselines):
+- **44% savings** vs. Opus-only baseline ($12.03 vs. $21.50)
+- **6.1% savings** vs. manual model selection
 - Quality: 4.85/5 mean, 100% pass rate, 5% rework rate
-- SINGLE_FILE/LOW was over-routed to Haiku (16 downgrades) — routing table updated to route SINGLE_FILE/LOW to Sonnet
-- Measured tier success rates: Haiku/Sonnet/Opus all 100% on 15 coding prompts (45 calls); Ollama small/medium/large also 100% (60 calls) — prompts too easy to differentiate, but Haiku is **13x cheaper** than Opus for identical results
 
-A quick-log script (`evaluation/scripts/quick_log.sh`, 5 prompts) is available for ongoing data collection. See `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow.
+**Tier success rates** (45 cloud + 60 hybrid calls, measured via `measure_routing.py`):
+- Cloud: Haiku, Sonnet, Opus all **100%** on 15 coding prompts — Haiku is **13x cheaper** than Opus for identical results
+- Hybrid: qwen2.5-coder (7b, 14b) and deepseek-coder-v2 (16b) all **100%** at zero API cost
+
+**Output compression** (90 calls on Sonnet, measured via `measure_compression.py`):
+- Per-class best modes save **28-55%** output tokens — see [`evaluation/COMPRESSION_RESULTS.md`](evaluation/COMPRESSION_RESULTS.md)
+- Aggregate compression is unreliable; `/vex auto` solves this by matching mode to task class
+
+**Not yet measured:**
+- Real in-session escalation data (current prompts are too easy to trigger failures)
+- Tier differentiation on multi-file, tool-using, context-heavy tasks
+
+A quick-log script (`evaluation/scripts/quick_log.sh`, 5 prompts) is available for ongoing data collection.
 
 ---
 

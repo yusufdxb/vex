@@ -230,14 +230,14 @@ vex/
 **Measured:**
 - Output-compression mode savings on Sonnet — `evaluation/COMPRESSION_RESULTS.md` (n=3 per combo, 54 total calls, 19-21% aggregate savings with per-class variance)
 
-**Not measured yet:**
+**Data collection underway:**
 - Routing accuracy vs. manual model selection
 - Cost savings from routing itself (vs. an Opus-only baseline)
 - Quality scores per tier
 - Escalation effectiveness
 - Hybrid-mode local-model offload rate
 
-These require logged-task data that has to come from your own use. See `EVALUATION.md` for the plan and `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow if you want to contribute data.
+These require logged-task data from real usage. A quick-log script (`evaluation/scripts/quick_log.sh`, 5 prompts) is available to reduce logging friction. See `EVALUATION.md` for the plan and `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow if you want to contribute data.
 
 ---
 

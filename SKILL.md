@@ -201,7 +201,7 @@ stats(CLASS)    → MODEL_SUCCESS_RATES  (from routing log)
 | TRIVIAL | ANY | `haiku` |
 | MECHANICAL | LOW–MED | `haiku` |
 | MECHANICAL | HIGH+ | `sonnet` |
-| SINGLE_FILE | LOW | `haiku` |
+| SINGLE_FILE | LOW | `sonnet` |
 | SINGLE_FILE | MEDIUM | `sonnet` |
 | SINGLE_FILE | HIGH+ | `sonnet` |
 | MULTI_FILE | LOW | `sonnet` |

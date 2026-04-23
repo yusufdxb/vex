@@ -44,7 +44,7 @@
 |---|---|---|---|
 | TRIVIAL | Haiku | Haiku | Haiku |
 | MECHANICAL | Haiku | Haiku | Sonnet |
-| SINGLE_FILE | Haiku | Sonnet | Sonnet |
+| SINGLE_FILE | Sonnet | Sonnet | Sonnet |
 | MULTI_FILE | Sonnet | Opus | Opus |
 | REFACTOR | Sonnet | Sonnet | Opus |
 | ARCHITECTURAL | Opus | Opus | Opus |

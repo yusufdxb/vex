@@ -84,7 +84,7 @@ Task → Classify → Impact analysis → Risk score → Context estimate → Ro
 |---|---|---|---|
 | **Trivial** | Haiku | Haiku | Haiku |
 | **Mechanical** | Haiku | Haiku | Sonnet |
-| **Single file** | Haiku | Sonnet | Sonnet |
+| **Single file** | Sonnet | Sonnet | Sonnet |
 | **Multi file** | Sonnet | Opus | Opus |
 | **Refactor** | Sonnet | Sonnet | Opus |
 | **Architectural** | Opus | Opus | Opus |
@@ -230,14 +230,13 @@ vex/
 **Measured:**
 - Output-compression mode savings on Sonnet — `evaluation/COMPRESSION_RESULTS.md` (n=3 per combo, 54 total calls, 19-21% aggregate savings with per-class variance)
 
-**Data collection underway:**
-- Routing accuracy vs. manual model selection
-- Cost savings from routing itself (vs. an Opus-only baseline)
-- Quality scores per tier
-- Escalation effectiveness
-- Hybrid-mode local-model offload rate
+**Preliminary (60 tasks, reconstructed baselines — see [`evaluation/RESULTS.md`](evaluation/RESULTS.md)):**
+- Routing saves an estimated **44% vs. Opus-only** and **6.1% vs. manual model selection**
+- Quality: 4.85/5 mean, 100% pass rate, 5% rework rate
+- SINGLE_FILE/LOW was over-routed to Haiku (16 downgrades) — routing table updated to route SINGLE_FILE/LOW to Sonnet
+- Escalation effectiveness and hybrid-mode offload rate remain unmeasured (no real routing data yet)
 
-These require logged-task data from real usage. A quick-log script (`evaluation/scripts/quick_log.sh`, 5 prompts) is available to reduce logging friction. See `EVALUATION.md` for the plan and `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow if you want to contribute data.
+A quick-log script (`evaluation/scripts/quick_log.sh`, 5 prompts) is available for ongoing data collection. See `evaluation/EXPERIMENT_PROTOCOL.md` for the daily workflow.
 
 ---
 

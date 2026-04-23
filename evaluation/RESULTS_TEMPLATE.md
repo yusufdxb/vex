@@ -6,7 +6,7 @@
 > **Evaluator:** [name]
 > **Codebase(s):** [repos used]
 > **Languages:** [languages encountered]
-> **Model versions:** Haiku 4.5, Sonnet 4.5, Opus 4.6
+> **Model versions:** Haiku 4.5, Sonnet 4.5, Opus 4.7
 
 ## Important disclaimers
 

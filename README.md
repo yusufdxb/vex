@@ -44,7 +44,7 @@ Edit the config block at the top of `SKILL.md`:
 ROUTING_MODE:  cloud
 TIER_1:        claude-haiku-4-5
 TIER_2:        claude-sonnet-4-5
-TIER_3:        claude-opus-4-6
+TIER_3:        claude-opus-4-7
 ```
 
 **Hybrid mode (Claude + Ollama):**

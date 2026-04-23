@@ -80,7 +80,7 @@ class TestEstimateCost(unittest.TestCase):
 
     def test_haiku_cheaper_than_opus(self):
         h = mc.estimate_cost("claude-haiku-4-5", 1_000, 1_000)
-        o = mc.estimate_cost("claude-opus-4-6", 1_000, 1_000)
+        o = mc.estimate_cost("claude-opus-4-7", 1_000, 1_000)
         self.assertLess(h, o)
 
     def test_unknown_model_returns_none(self):
@@ -176,12 +176,12 @@ class TestPricing(unittest.TestCase):
     def test_all_three_tiers_priced(self):
         self.assertIn("claude-haiku-4-5", mc.PRICING)
         self.assertIn("claude-sonnet-4-5", mc.PRICING)
-        self.assertIn("claude-opus-4-6", mc.PRICING)
+        self.assertIn("claude-opus-4-7", mc.PRICING)
 
     def test_pricing_ordering_haiku_sonnet_opus(self):
         h = mc.PRICING["claude-haiku-4-5"]
         s = mc.PRICING["claude-sonnet-4-5"]
-        o = mc.PRICING["claude-opus-4-6"]
+        o = mc.PRICING["claude-opus-4-7"]
         self.assertLess(h["input"], s["input"])
         self.assertLess(s["input"], o["input"])
         self.assertLess(h["output"], s["output"])

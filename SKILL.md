@@ -1,6 +1,6 @@
 ---
 name: vex
-description: Prompt-based LLM routing heuristic — intended to reduce cost by routing tasks to cheaper model tiers. Triggers when: any coding task begins, user mentions usage/cost/tokens/routing/models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across model tiers using confidence scoring, impact analysis, risk scoring, and adaptive learning. Supports two modes — cloud-only (Opus/Sonnet/Haiku) and hybrid (Claude + Ollama local models).
+description: Prompt-based LLM routing heuristic — intended to reduce cost by routing tasks to cheaper model tiers. Triggers when: any coding task begins, user mentions usage/cost/tokens/routing/models, task involves file edits, refactors, debugging, or build system changes. Routes tasks across model tiers using confidence scoring, impact analysis, risk scoring, and adaptive learning. Supports two modes — cloud-only (Opus/Sonnet/Haiku) and hybrid (Claude + Ollama local models). Opus 4.7 compliant.
 user-invocable: true
 ---
 
@@ -16,7 +16,7 @@ Choose your routing mode and configure it below.
 ROUTING_MODE:  cloud
 TIER_1:        claude-haiku-4-5    # fast, cheap — trivial/mechanical tasks
 TIER_2:        claude-sonnet-4-5   # balanced — single/multi-file, debugging
-TIER_3:        claude-opus-4-6     # full power — architecture, refactors, research
+TIER_3:        claude-opus-4-7     # full power — architecture, refactors, research
 ```
 
 ### Mode B — Hybrid (Claude + Ollama)
@@ -602,7 +602,7 @@ Recommended execution plan:
 |---|---|---|---|
 | `tier:1` | Claude Haiku 4.5 | Trivial, mechanical, boilerplate | $$ |
 | `tier:2` | Claude Sonnet 4.5 | Single/multi-file, debugging, features | $$$ |
-| `tier:3` | Claude Opus 4.6 | Architecture, refactors, research, verification | $$$$ |
+| `tier:3` | Claude Opus 4.7 | Architecture, refactors, research, verification | $$$$ |
 
 ### Hybrid Mode Models (Ollama)
 

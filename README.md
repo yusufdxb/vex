@@ -63,8 +63,15 @@ Once installed, the skill prompt is available to Claude Code on every task.
 
 ## How routing works
 
-```
-Task → Classify → Impact analysis → Risk score → Context estimate → Route → Execute → Log outcome
+```mermaid
+graph LR
+    A[Task] --> B[Classify]
+    B --> C[Impact analysis]
+    C --> D[Risk score]
+    D --> E[Context estimate]
+    E --> F[Route]
+    F --> G[Execute]
+    G --> H[Log outcome]
 ```
 
 1. **Classify** — trivial rename through architectural change
